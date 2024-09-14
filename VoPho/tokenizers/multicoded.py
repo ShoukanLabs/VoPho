@@ -1,14 +1,19 @@
 import warnings
-
-from fast_langdetect import detect
 import re
+from fast_langdetect import detect
 
-CJK_UNICODE_RANGES = {
-    'zh': [(0x4E00, 0x9FFF), (0x3400, 0x4DBF), (0x20000, 0x2A6DF), (0x2A700, 0x2B73F), (0x2B740, 0x2B81F)],
-    'ja': [(0x3040, 0x309F), (0x30A0, 0x30FF)],  # Hiragana and Katakana ranges for Japanese
-    'ko': [(0xAC00, 0xD7AF)]  # Hangul range for Korean
+# Unicode ranges for various writing systems
+WRITING_SYSTEMS_UNICODE_RANGES = {
+    'zh': [(0x4E00, 0x9FFF), (0x3400, 0x4DBF), (0x20000, 0x2A6DF), (0x2A700, 0x2B73F), (0x2B740, 0x2B81F)],  # Chinese
+    'ja': [(0x3040, 0x309F), (0x30A0, 0x30FF)],  # Japanese (Hiragana and Katakana)
+    'ko': [(0xAC00, 0xD7AF)],  # Korean (Hangul)
+    'ar': [(0x0600, 0x06FF), (0x0750, 0x077F), (0x08A0, 0x08FF)],  # Arabic
+    'cy': [(0x0400, 0x04FF)],  # Cyrillic
+    'deva': [(0x0900, 0x097F)],  # Devanagari (used for Hindi, Sanskrit, etc.)
+    'he': [(0x0590, 0x05FF)],  # Hebrew
+    'th': [(0x0E00, 0x0E7F)],  # Thai
+    # Add other writing systems here as needed
 }
-
 
 class Tokenizer:
     def __init__(self):
@@ -16,30 +21,13 @@ class Tokenizer:
         The base VoPho tokenizer class
         """
 
-    def tokenize(self, text, group=True):
-        """
-        :param text: the text to tokenize
-        :param group: whether to group words of the same LangID, defaults to true
-
-        :returns string:
-        """
-        result = self._tokenize(text)
-        if group:
-            result = self._group_segments(result)
-        if "<??>" in result:
-            warnings.warn("You're output resulted in tokenization errors, we were unable to detect a language or the "
-                          "input resulted in an error, please filter the resulting output before phonemization."
-                          )
-        return result
-
     @staticmethod
-    def is_cjk(char):
+    def is_writing_system(char, system):
+        """
+        Check if a character belongs to a specific writing system.
+        """
         code_point = ord(char)
-        for ranges in CJK_UNICODE_RANGES.values():
-            for start, end in ranges:
-                if start <= code_point <= end:
-                    return True
-        return False
+        return any(start <= code_point <= end for start, end in WRITING_SYSTEMS_UNICODE_RANGES.get(system, []))
 
     @staticmethod
     def detect_japanese_korean_chinese(text):
@@ -51,15 +39,15 @@ class Tokenizer:
             code_point = ord(char)
 
             # Check for Chinese characters (CJK ideograms)
-            if any(start <= code_point <= end for start, end in CJK_UNICODE_RANGES['zh']):
+            if any(start <= code_point <= end for start, end in WRITING_SYSTEMS_UNICODE_RANGES['zh']):
                 is_chinese = True
 
             # Check for Japanese characters (Hiragana, Katakana)
-            if any(start <= code_point <= end for start, end in CJK_UNICODE_RANGES['ja']):
+            if any(start <= code_point <= end for start, end in WRITING_SYSTEMS_UNICODE_RANGES['ja']):
                 is_japanese = True
 
             # Check for Korean characters (Hangul)
-            if any(start <= code_point <= end for start, end in CJK_UNICODE_RANGES['ko']):
+            if any(start <= code_point <= end for start, end in WRITING_SYSTEMS_UNICODE_RANGES['ko']):
                 is_korean = True
 
         if is_japanese:
@@ -70,37 +58,49 @@ class Tokenizer:
             return "zh"
         else:
             return "??"
+    def detect_writing_system(self, text):
+        """
+        Detect which writing system a text belongs to.
+        """
+        for system, ranges in WRITING_SYSTEMS_UNICODE_RANGES.items():
+            if any(ord(char) in range(start, end + 1) for char in text for start, end in ranges):
+                if system not in ["zh", "ja", "ko"]:
+                    return system
+                else:
+                    return "cjk"
 
     @staticmethod
     def is_punctuation(char):
+        """
+        Check if a character is a punctuation mark.
+        """
         return not char.isalnum() and not char.isspace()
 
-    def split_cjk_non_cjk(self, text):
+    def split_text_by_writing_system(self, text):
+        """
+        Split text into segments based on different writing systems.
+        """
         segments = []
         current_segment = ""
-        current_type = None  # None means not determined yet
+        current_type = None
 
         for char in text:
-            if self.is_punctuation(char):  # Handle punctuation separately
+            if self.is_punctuation(char):
                 if current_segment:
                     segments.append((current_segment, current_type))
                     current_segment = ""
                 segments.append((char, "punctuation"))
-                current_type = None  # Reset after punctuation
-            elif self.is_cjk(char):  # Handle CJK characters
-                if current_type == "non-cjk":
-                    segments.append((current_segment, "non-cjk"))
-                    current_segment = ""
-                current_type = "cjk"
-                current_segment += char
-            else:  # Handle non-CJK characters
-                if current_type == "cjk":
-                    segments.append((current_segment, "cjk"))
-                    current_segment = ""
-                current_type = "non-cjk"
-                current_segment += char
+                current_type = None
+            else:
+                char_system = self.detect_writing_system(char)
+                if char_system != current_type:
+                    if current_segment:
+                        segments.append((current_segment, current_type))
+                    current_type = char_system
+                    current_segment = char
+                else:
+                    current_segment += char
 
-        # Append the last segment if any
         if current_segment:
             segments.append((current_segment, current_type))
 
@@ -108,16 +108,33 @@ class Tokenizer:
 
     @staticmethod
     def split_non_cjk_in_segment(text):
+        """
+        Split non-CJK text into individual words or punctuation.
+        """
         return re.findall(r'\w+|[^\w\s]', text)
 
     def _tokenize(self, text):
-        segments = self.split_cjk_non_cjk(text)
+        """
+        Tokenize text by detecting writing systems and handling punctuation.
+        """
+        segments = self.split_text_by_writing_system(text)
         processed_segments = []
 
         for segment, seg_type in segments:
             if seg_type == "cjk":
                 lang = self.detect_japanese_korean_chinese(segment)
                 processed_segments.append(f"<{lang}>{segment}</{lang}>")
+            elif seg_type in WRITING_SYSTEMS_UNICODE_RANGES:
+                if seg_type != "deva":
+                    processed_segments.append(f"<{seg_type}>{segment}</{seg_type}>")
+                else:
+                    try:
+                        lang = detect(segment)["lang"]
+
+                        processed_segments.append(f"<{lang}>{segment.strip()}</{lang}>")
+                    except Exception as e:
+                        processed_segments.append(f"<??>{segment.strip()}</??>")
+
             elif seg_type == "punctuation":
                 processed_segments.append(f"<punctuation>{segment}</punctuation>")
             else:
@@ -127,22 +144,26 @@ class Tokenizer:
 
                 for word in words:
                     if self.is_punctuation(word):
-                        processed_segments.append(f"<punctuation>{word}</punctuation>")
-                        continue
-                    try:
-                        lang = detect(word)["lang"]
-                        if lang != current_lang:
-                            if current_segment:
-                                processed_segments.append(f"<{current_lang}>{current_segment.strip()}</{current_lang}>")
-                                current_segment = ""
-                            current_lang = lang
-                        current_segment += word + " "
-                    except:
                         if current_segment:
-                            processed_segments.append(f"<??>{current_segment.strip()}</??>")
+                            processed_segments.append(f"<{current_lang}>{current_segment.strip()}</{current_lang}>")
                             current_segment = ""
+                        processed_segments.append(f"<punctuation>{word}</punctuation>")
                         current_lang = None
-                        processed_segments.append(word)
+                    else:
+                        try:
+                            lang = detect(word)["lang"]
+                            if lang != current_lang:
+                                if current_segment:
+                                    processed_segments.append(f"<{current_lang}>{current_segment.strip()}</{current_lang}>")
+                                    current_segment = ""
+                                current_lang = lang
+                            current_segment += word + " "
+                        except Exception as e:
+                            if current_segment:
+                                processed_segments.append(f"<??>{current_segment.strip()}</??>")
+                                current_segment = ""
+                            processed_segments.append(word)
+                            current_lang = None
 
                 if current_segment:
                     processed_segments.append(f"<{current_lang}>{current_segment.strip()}</{current_lang}>")
@@ -151,6 +172,9 @@ class Tokenizer:
 
     @staticmethod
     def _group_segments(text):
+        """
+        Group segments of the same language or writing system together.
+        """
         pattern = r'(<(\w+)>.*?</\2>|[^\w\s])'
         tokens = re.findall(pattern, text)
 
@@ -170,26 +194,35 @@ class Tokenizer:
                     current_content = [content]
             else:
                 if current_content:
-                    if segment == '':  # Add space after content
+                    if segment == '':
                         current_content[-1] += segment
-                    else:  # Append punctuation to the last content item
+                    else:
                         current_content[-1] += segment
                 else:
-                    grouped_segments.append(segment)  # Append punctuation directly if current_content is empty
+                    grouped_segments.append(segment)
 
         if current_content:
             grouped_segments.append(f"<{current_lang}>{''.join(current_content)}</{current_lang}>")
 
-        fintext = ''.join(grouped_segments)
+        return (''.join(grouped_segments).replace("<punctuation>", "")
+                .replace("</punctuation>", " "))
 
-        return fintext.replace("<punctuation>", "").replace("</punctuation>", "")
-
+    def tokenize(self, text, group=True):
+        """
+        Tokenize input text and optionally group segments of the same writing system.
+        """
+        result = self._tokenize(text)
+        if group:
+            result = self._group_segments(result)
+        if "<??>" in result:
+            warnings.warn("Your output contains tokenization errors. We were unable to detect a language or writing system, or there was an error in processing.")
+        return result
 
 if __name__ == "__main__":
-    input_text = "你好は中国語でこんにちはと言う意味をしています。"
+    input_text = "hello, 你好は中国語でこんにちはと言う意味をしています。مرحبا! Привет! नमस्ते!"
     token = Tokenizer()
     processed_text = token.tokenize(input_text)
-    print("input text:")
+    print("Input text:")
     print(input_text)
-    print("\nout text:")
+    print("\nProcessed text:")
     print(processed_text)
