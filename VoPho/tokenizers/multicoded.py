@@ -1,6 +1,8 @@
 import warnings
 import re
 from fast_langdetect import detect
+import random
+from termcolor import colored
 
 # Unicode ranges for various writing systems
 WRITING_SYSTEMS_UNICODE_RANGES = {
@@ -14,6 +16,72 @@ WRITING_SYSTEMS_UNICODE_RANGES = {
     'th': [(0x0E00, 0x0E7F)],  # Thai
     # Add other writing systems here as needed
 }
+
+# Mapping of predefined language codes to specific colors
+LANGUAGE_COLORS = {
+    'zh': 'yellow',  # Chinese
+    'ja': 'cyan',  # Japanese
+    'ko': 'blue',  # Korean
+    'ar': 'green',  # Arabic
+    'cy': 'magenta',  # Cyrillic
+    'hi': 'red',  # Devanagari
+    'mr': 'red',  # Devanagari
+    'he': 'white',  # Hebrew
+    'th': 'blue',  # Thai
+    '??': 'dark_red'  # Undefined or unknown languages
+}
+
+# Keep track of colors assigned to never-before-seen languages
+unknown_language_colors = {}
+
+
+def random_color():
+    """Returns a random color from the set of basic colors."""
+    colors = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white']
+    return random.choice(colors)
+
+
+def print_colored_text(text):
+    """
+    Print the tokenized text with each language in a different color.
+    New, unseen languages get assigned a random color,
+    while unknown languages ('??') get a dark red color.
+    """
+    pattern = r'<(\w+)>(.*?)</\1>'
+    last_pos = 0
+
+    # Iterate over each detected language segment
+    for match in re.finditer(pattern, text):
+        lang, content = match.groups()
+        start, end = match.span()
+
+        # Print any non-matching text before the tokenized segment
+        if last_pos < start:
+            if text[last_pos:start] is not None:
+                print(text[last_pos:start], end="")
+
+        # Assign a random color to new languages
+        if lang not in LANGUAGE_COLORS:
+            if lang not in unknown_language_colors:
+                unknown_language_colors[lang] = random_color()
+            color = unknown_language_colors[lang]
+        else:
+            color = LANGUAGE_COLORS[lang]
+
+        # Assign dark red for undefined languages ('??')
+        if lang == "??":
+            color = 'red'
+
+        # Print the content in the assigned color
+        if content is not None:
+            print(colored(content, color), end="")
+            last_pos = end
+
+    # Print any remaining part of the text after the last token
+    if last_pos < len(text):
+        if text[last_pos:] is not None:
+            print(text[last_pos:])
+
 
 class Tokenizer:
     def __init__(self):
@@ -58,6 +126,7 @@ class Tokenizer:
             return "zh"
         else:
             return "??"
+
     def detect_writing_system(self, text):
         """
         Detect which writing system a text belongs to.
@@ -69,12 +138,11 @@ class Tokenizer:
                 else:
                     return "cjk"
 
-    @staticmethod
-    def is_punctuation(char):
+    def is_punctuation(self, char):
         """
         Check if a character is a punctuation mark.
         """
-        return not char.isalnum() and not char.isspace()
+        return not char.isalnum() and not char.isspace() and not self.is_writing_system(char, self.detect_writing_system(char))
 
     def split_text_by_writing_system(self, text):
         """
@@ -154,7 +222,8 @@ class Tokenizer:
                             lang = detect(word)["lang"]
                             if lang != current_lang:
                                 if current_segment:
-                                    processed_segments.append(f"<{current_lang}>{current_segment.strip()}</{current_lang}>")
+                                    processed_segments.append(
+                                        f"<{current_lang}>{current_segment.strip()}</{current_lang}>")
                                     current_segment = ""
                                 current_lang = lang
                             current_segment += word + " "
@@ -215,8 +284,10 @@ class Tokenizer:
         if group:
             result = self._group_segments(result)
         if "<??>" in result:
-            warnings.warn("Your output contains tokenization errors. We were unable to detect a language or writing system, or there was an error in processing.")
+            warnings.warn(
+                "Your output contains tokenization errors. We were unable to detect a language or writing system, or there was an error in processing.")
         return result
+
 
 if __name__ == "__main__":
     input_text = "hello, 你好は中国語でこんにちはと言う意味をしています。مرحبا! Привет! नमस्ते!"
@@ -226,3 +297,4 @@ if __name__ == "__main__":
     print(input_text)
     print("\nProcessed text:")
     print(processed_text)
+    print(print_colored_text(processed_text))
