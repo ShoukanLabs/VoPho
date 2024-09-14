@@ -1,0 +1,61 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredPackages">
+        <value>
+          <list size="48">
+            <item index="0" class="java.lang.String" itemvalue="tokenizers" />
+            <item index="1" class="java.lang.String" itemvalue="jieba" />
+            <item index="2" class="java.lang.String" itemvalue="gradio" />
+            <item index="3" class="java.lang.String" itemvalue="unidecode" />
+            <item index="4" class="java.lang.String" itemvalue="wget" />
+            <item index="5" class="java.lang.String" itemvalue="openai-whisper" />
+            <item index="6" class="java.lang.String" itemvalue="sudachipy" />
+            <item index="7" class="java.lang.String" itemvalue="sudachidict_core" />
+            <item index="8" class="java.lang.String" itemvalue="pyopenjtalk-prebuilt" />
+            <item index="9" class="java.lang.String" itemvalue="cn2an" />
+            <item index="10" class="java.lang.String" itemvalue="eng_to_ipa" />
+            <item index="11" class="java.lang.String" itemvalue="langid" />
+            <item index="12" class="java.lang.String" itemvalue="vocos" />
+            <item index="13" class="java.lang.String" itemvalue="pypinyin" />
+            <item index="14" class="java.lang.String" itemvalue="networkx" />
+            <item index="15" class="java.lang.String" itemvalue="huggingface-hub" />
+            <item index="16" class="java.lang.String" itemvalue="PyYAML" />
+            <item index="17" class="java.lang.String" itemvalue="MarkupSafe" />
+            <item index="18" class="java.lang.String" itemvalue="requests" />
+            <item index="19" class="java.lang.String" itemvalue="torchvision" />
+            <item index="20" class="java.lang.String" itemvalue="tortoise" />
+            <item index="21" class="java.lang.String" itemvalue="filelock" />
+            <item index="22" class="java.lang.String" itemvalue="pyllama" />
+            <item index="23" class="java.lang.String" itemvalue="sentencepiece" />
+            <item index="24" class="java.lang.String" itemvalue="urllib3" />
+            <item index="25" class="java.lang.String" itemvalue="scipy" />
+            <item index="26" class="java.lang.String" itemvalue="transformers" />
+            <item index="27" class="java.lang.String" itemvalue="packaging" />
+            <item index="28" class="java.lang.String" itemvalue="torch" />
+            <item index="29" class="java.lang.String" itemvalue="attrs" />
+            <item index="30" class="java.lang.String" itemvalue="tqdm" />
+            <item index="31" class="java.lang.String" itemvalue="regex" />
+            <item index="32" class="java.lang.String" itemvalue="tts" />
+            <item index="33" class="java.lang.String" itemvalue="typing_extensions" />
+            <item index="34" class="java.lang.String" itemvalue="cachetools" />
+            <item index="35" class="java.lang.String" itemvalue="charset-normalizer" />
+            <item index="36" class="java.lang.String" itemvalue="rwkvstic" />
+            <item index="37" class="java.lang.String" itemvalue="Pillow" />
+            <item index="38" class="java.lang.String" itemvalue="py-cord" />
+            <item index="39" class="java.lang.String" itemvalue="monotonic-align" />
+            <item index="40" class="java.lang.String" itemvalue="typing" />
+            <item index="41" class="java.lang.String" itemvalue="wandb" />
+            <item index="42" class="java.lang.String" itemvalue="mlflow" />
+            <item index="43" class="java.lang.String" itemvalue="protobuf" />
+            <item index="44" class="java.lang.String" itemvalue="numpy" />
+            <item index="45" class="java.lang.String" itemvalue="importlib-metadata" />
+            <item index="46" class="java.lang.String" itemvalue="styletts2" />
+            <item index="47" class="java.lang.String" itemvalue="torchaudio" />
+          </list>
+        </value>
+      </option>
+    </inspection_tool>
+  </profile>
+</component>
