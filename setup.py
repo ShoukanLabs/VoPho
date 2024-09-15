@@ -19,7 +19,7 @@ setup(
     ],
     python_requires=">=3.6",
     install_requires=[
-        "ruphon==1.3 @ git+https://github.com/korakoe/ruphon.git",
+        "ruphon==1.3@git+https://github.com/korakoe/ruphon.git",
         "ruaccent==1.5.8"
         "cn2an==0.5.22",
         "colorama==0.4.6",
