@@ -168,7 +168,8 @@ class Phonemizer:
                 if CJKLang != "??":
                     processed_segments.append({"text": CJK, "lang": CJKLang})
 
-                    remaining = CJKog.split(CJK, 1)[-1]
+                    remaining = str(CJKog.split(CJK, 1)[-1])
+                    remaining = remaining.replace(CJK.strip(), "")
                     if remaining:
                         remaining_lang = self.Tokenizer.detect_japanese_korean_chinese(remaining)
                         processed_segments.append({"text": remaining, "lang": remaining_lang})
