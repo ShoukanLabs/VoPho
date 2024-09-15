@@ -22,7 +22,6 @@ requires-python = ">=3.6"
 [project.urls]
 homepage = "https://github.com/ShoukanLabs/VoPho"
 
-[project.dependencies]
 dependencies = [
     "ruphon @ git+https://github.com/korakoe/ruphon.git@1.3",
     "ruaccent==1.5.8",
