@@ -7,7 +7,6 @@ name = "VoPho"
 version = "0.0.1"
 description = "An easy to use Multilingual phonemization meta-library"
 readme = "README.md"
-readme-content-type = "text/markdown"
 authors = [
     { name = "ShoukanLabs." }
 ]
@@ -37,4 +36,3 @@ dependencies = [
 
 [project.urls]
 homepage = "https://github.com/ShoukanLabs/VoPho"
-
