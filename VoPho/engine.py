@@ -6,15 +6,25 @@ import re
 
 
 class Phonemizer:
+    """
+    A class for phonemizing text in multiple languages,
+    """
+
     def __init__(self, working_path=None):
+        """
+        Initialize the Phonemizer.
+
+        :param working_path: Optional path for working directory
+        """
         self.working_path = working_path
         self._phonemizers = {}
         self.Tokenizer = Tokenizer()
 
-    def pretty_print(self, phonemized_dict: dict):
+    def pretty_print(self, phonemized_dict: list):
         """
-        Takes the dict output from the phonemization and prints it with colors from LANGUAGE_COLORS.
-        Unknown languages should be marked in bold dark red.
+        Print the phonemized text with colors based on language.
+
+        :param phonemized_dict: A list of dictionaries containing phonemized text segments and their languages
         """
         for segment in phonemized_dict:
             text = segment['text']
@@ -37,6 +47,12 @@ class Phonemizer:
         print("")
 
     def get_phonemizer(self, lang):
+        """
+        Get or create a phonemizer for the specified language.
+
+        :param lang: Language code (e.g., 'en', 'ja', 'zh', 'ru')
+        :return: A phonemizer instance for the specified language, or None if not supported
+        """
         if lang not in self._phonemizers:
             if lang == 'en':
                 self._phonemizers[lang] = english.Phonemizer()
@@ -49,6 +65,12 @@ class Phonemizer:
         return self._phonemizers.get(lang)
 
     def seperate_languages(self, text):
+        """
+        Separate the input text into segments based on language tags.
+
+        :param text: Input text with language tags
+        :return: A list of dictionaries containing text segments and their languages
+        """
         text = self.Tokenizer.tokenize(text)
 
         pattern = r'(<(\w+)>(.*?)</\2>)|([^<]+)'
@@ -80,9 +102,11 @@ class Phonemizer:
 
     def phonemize_for_language(self, text, lang):
         """
-        :param text: The plaintext to Phonemize
-        :param lang: The language ID for phonemisation
-        :return:
+        Phonemize the given text for a specific language.
+
+        :param text: The plaintext to phonemize
+        :param lang: The language ID for phonemization
+        :return: Phonemized text, or original text wrapped in <??> tags if language is not supported
         """
         phonemizer = self.get_phonemizer(lang)
         if phonemizer:
@@ -90,6 +114,13 @@ class Phonemizer:
         return f"<??>{text}</??>"  # Return original text if no phonemizer available
 
     def phonemize(self, input_text, output_dict=False):
+        """
+        Phonemize the input text, handling multiple languages including CJK.
+
+        :param input_text: The input text to phonemize
+        :param output_dict: If True, return a list of dictionaries with text and language; if False, return a single string
+        :return: Phonemized text as a string or list of dictionaries
+        """
         separated = self.seperate_languages(input_text)
         result = []
 
@@ -119,6 +150,12 @@ class Phonemizer:
             return phonemized_result
 
     def _process_cjk_segment(self, item):
+        """
+        Process a CJK (Chinese, Japanese, Korean) text segment.
+
+        :param item: A dictionary containing the text segment and its language
+        :return: A list of dictionaries with processed CJK segments and their detected languages
+        """
         processed_segments = []
         segmentsCJKog = self.Tokenizer.split_non_cjk_in_segment(item["text"])
 
