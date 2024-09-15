@@ -19,6 +19,7 @@ WRITING_SYSTEMS_UNICODE_RANGES = {
 
 # Mapping of predefined language codes to specific colors
 LANGUAGE_COLORS = {
+    'en': 'green',  # Chinese
     'zh': 'yellow',  # Chinese
     'ja': 'cyan',  # Japanese
     'ko': 'blue',  # Korean
@@ -28,7 +29,7 @@ LANGUAGE_COLORS = {
     'mr': 'red',  # Devanagari
     'he': 'white',  # Hebrew
     'th': 'blue',  # Thai
-    '??': 'dark_red'  # Undefined or unknown languages
+    '??': 'red'  # Undefined or unknown languages
 }
 
 # Keep track of colors assigned to never-before-seen languages

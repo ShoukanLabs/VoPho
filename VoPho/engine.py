@@ -1,7 +1,9 @@
 import warnings
 
+from termcolor import colored
+
 from phonemizers import english, japanese, mandarin, russian
-from langtokenizers.multicoded import Tokenizer
+from langtokenizers.multicoded import Tokenizer, LANGUAGE_COLORS
 import re
 
 class Phonemizer:
@@ -9,6 +11,30 @@ class Phonemizer:
         self.working_path = working_path
         self._phonemizers = {}
         self.Tokenizer = Tokenizer()
+
+    def pretty_print(self, phonemized_dict: dict):
+        """
+        Takes the dict output from the phonemization and prints it with colors from LANGUAGE_COLORS.
+        Unknown languages should be marked in bold dark red.
+        """
+        for segment in phonemized_dict:
+            text = segment['text']
+            lang = segment['lang']
+
+            pattern = r'<\?\?>(.*?)</\?\?>'
+
+            # Determine the color based on the language
+            color = LANGUAGE_COLORS[lang]
+
+            # Replace the tagged content with colored content
+            def replace_with_color(match):
+                return '\033[1m' + f"{match.group(1)}" + '\033[0m'
+
+            # Substitute the pattern with colored text
+            colored_text = re.sub(pattern, replace_with_color, text)
+
+            # Print the text with the corresponding color
+            print(colored(colored_text, color), end='')
 
     def get_phonemizer(self, lang):
         if lang not in self._phonemizers:
@@ -58,30 +84,46 @@ class Phonemizer:
             return phonemizer.phonemize(text)
         return f"<??>{text}</??>"  # Return original text if no phonemizer available
 
-    def phonemize(self, input_text):
+    def phonemize(self, input_text, output_dict=False):
         separated = self.seperate_languages(input_text)
         result = []
         for item in separated:
             phonemized_text = self.phonemize_text_segment(item['text'], item['lang'])
             checked_languages = self.Tokenizer.detect_japanese_korean_chinese(phonemized_text)
-            if checked_languages != "??":
-                segmentsCJK = self.Tokenizer.split_non_cjk_in_segment(phonemized_text)
-                for CJK in segmentsCJK:
-                    if self.Tokenizer.detect_japanese_korean_chinese(CJK) != "??":
-                        phonemized_text = phonemized_text.replace(CJK,
-                                                                  self.phonemize_text_segment(CJK, checked_languages))
-            result.append(phonemized_text)
-            fin = ''.join(result)
+            if item["lang"] in ["zh", "ja", "ko"]:
+                if checked_languages != "??":
+                    segmentsCJK = self.Tokenizer.split_non_cjk_in_segment(phonemized_text)
+                    for CJK in segmentsCJK:
+                        CJKLang = self.Tokenizer.detect_japanese_korean_chinese(CJK)
+                        if CJKLang != "??":
+                            phonemized_text = phonemized_text.replace(CJK,
+                                                                      self.phonemize_text_segment(CJK, CJKLang))
 
-            if "<??>" in fin:
-                warnings.warn(
-                    "Your output contains unsupported languages, "
-                    "<??> tags have been added to allow for manual filtering")
+                            if output_dict:
+                                result.append({"text": phonemized_text, "lang": CJKLang})
+            else:
+                if output_dict:
+                    if not "??" in phonemized_text:
+                        result.append({"text": phonemized_text, "lang": item["lang"]})
+                    else:
+                        result.append({"text": phonemized_text, "lang": "??"})
+
+            if not output_dict:
+                result.append(phonemized_text)
+                fin = ''.join(result)
+
+                if "<??>" in fin:
+                    warnings.warn(
+                        "Your output contains unsupported languages, "
+                        "<??> tags have been added to allow for manual filtering")
+            else:
+                fin = result
+
         return fin
 
 if __name__ == "__main__":
     input_text = "hello, 你好は中国語でこんにちはと言う意味をしています。مرحبا! Привет! नमस्ते!"
     engine = Phonemizer()
-    output = engine.phonemize(input_text)
+    output = engine.phonemize(input_text, output_dict=True)
     print(input_text)
-    print(output)
+    engine.pretty_print(output)
