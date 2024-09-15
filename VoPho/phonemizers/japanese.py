@@ -1138,4 +1138,8 @@ class Phonemizer:
         output = random_sym_fix_no_space(
             output)  # same as above but for those without white space such as miku&sakura -> miku ando sakura
 
-        return output.lstrip()
+        out = output.lstrip()
+        if text[-1] == " ":
+            out += " "
+
+        return out

@@ -180,7 +180,8 @@ class Tokenizer:
         """
         Split non-CJK text into individual words or punctuation.
         """
-        return re.findall(r'\w+|[^\w\s]', text)
+        return re.findall(r'[\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF。]'
+                          r'+(?:\s*)|[\w.,!?;:\'"(){}\[\]\-–—\s]+', text)
 
     def _tokenize(self, text):
         """

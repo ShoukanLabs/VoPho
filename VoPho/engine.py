@@ -60,7 +60,7 @@ class Phonemizer:
                 self._phonemizers[lang] = japanese.Phonemizer()
             elif lang == 'zh':
                 self._phonemizers[lang] = mandarin.Phonemizer()
-            elif lang == 'ru':
+            elif lang == 'cy': # cyrillic treated as russian
                 self._phonemizers[lang] = russian.Phonemizer(working_path=self.working_path)
         return self._phonemizers.get(lang)
 
