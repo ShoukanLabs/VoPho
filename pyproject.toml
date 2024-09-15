@@ -19,10 +19,6 @@ classifiers = [
 ]
 requires-python = ">=3.6"
 
-[project.urls]
-homepage = "https://github.com/ShoukanLabs/VoPho"
-
-[project]
 dependencies = [
     "ruphon @ git+https://github.com/korakoe/ruphon.git",
     "ruaccent==1.5.8",
@@ -38,3 +34,7 @@ dependencies = [
     "torch==2.1.2",
     "fast-langdetect==0.2.1"
 ]
+
+[project.urls]
+homepage = "https://github.com/ShoukanLabs/VoPho"
+
