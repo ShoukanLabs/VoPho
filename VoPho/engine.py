@@ -1,7 +1,7 @@
 import warnings
 from termcolor import colored
-from phonemizers import english, japanese, mandarin, russian
-from langtokenizers.multicoded import Tokenizer, LANGUAGE_COLORS
+from .phonemizers import english, japanese, mandarin, russian
+from .langtokenizers.multicoded import Tokenizer, LANGUAGE_COLORS
 import re
 
 
