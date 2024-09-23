@@ -19,7 +19,7 @@ classifiers = [
 requires-python = ">=3.6"
 
 dependencies = [
-    "ruphon @ git+https://github.com/korakoe/ruphon.git",
+    "ruphon",
     "ruaccent==1.5.8",
     "cn2an==0.5.22",
     "colorama==0.4.6",
