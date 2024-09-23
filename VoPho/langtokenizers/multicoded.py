@@ -302,7 +302,7 @@ class Tokenizer:
 
 
 if __name__ == "__main__":
-    input_text = "hello, 你好は中国語でこんにちはと言う意味をしています。مرحبا! Привет! नमस्ते!"
+    input_text = "hello, 你好は中国語でこんにちはと言う意味をしています。مرحبا! Привет! नमस्ते! จะ ราบรื่น"
     token = Tokenizer()
     processed_text = token.tokenize(input_text)
     print("Input text:")

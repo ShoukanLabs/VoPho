@@ -1,6 +1,6 @@
 import warnings
 from termcolor import colored
-from .phonemizers import english, japanese, mandarin, russian
+from .phonemizers import english, japanese, mandarin, russian, thai
 from .langtokenizers.multicoded import Tokenizer, LANGUAGE_COLORS
 import re
 
@@ -62,6 +62,8 @@ class Phonemizer:
                 self._phonemizers[lang] = mandarin.Phonemizer()
             elif lang == 'cy': # cyrillic treated as russian
                 self._phonemizers[lang] = russian.Phonemizer(working_path=self.working_path)
+            elif lang == 'th':
+                self._phonemizers[lang] = thai.Phonemizer()
         return self._phonemizers.get(lang)
 
     def seperate_languages(self, text):
