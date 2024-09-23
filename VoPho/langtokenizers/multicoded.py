@@ -143,7 +143,17 @@ class Tokenizer:
         """
         Check if a character is a punctuation mark.
         """
-        return not char.isalnum() and not char.isspace() and not self.is_writing_system(char, self.detect_writing_system(char))
+        has_writing_system = False
+        if len(char) > 1:
+            for character in char:
+                is_writing = self.is_writing_system(character, self.detect_writing_system(character))
+                if is_writing:
+                    has_writing_system = True
+                    break
+
+            return not char.isalnum() and not char.isspace() and not has_writing_system
+        else:
+            return not char.isalnum() and not char.isspace() and not self.is_writing_system(char, self.detect_writing_system(char))
 
     def split_text_by_writing_system(self, text):
         """
