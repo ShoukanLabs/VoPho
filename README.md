@@ -51,5 +51,22 @@ print(f"Took - Instantiated: {end - start}")
 - Multilingual: Supports a wide range of languages.
 - Accurate: Provides precise phonemization.
 
+# Supported Languages
+| Language   | Supported | Verified Accuracy | Notes                          |
+|------------|-----------|-------------------|--------------------------------|
+| English    | Yes       | Yes               | Fully supported and verified   |
+| Russian    | Yes       | Yes               | Fully supported and verified   |
+| French     | Planned   | N/A               | Planned for future support     |
+| German     | Planned   | N/A               | Planned for future support     |
+| Spanish    | Planned   | N/A               | Planned for future support     |
+| Italian    | Planned   | N/A               | Planned for future support     |
+| Mandarin   | Yes       | Yes               | Fully supported and verified   |
+| Japanese   | Yes       | Yes               | Fully supported and verified   |
+| Korean     | Planned   | N/A               | Planned for future support     |
+| Thai       | Yes       | No                | Supported, accuracy unverified |
+| Arabic     | Planned   | N/A               | Planned for future support     |
+| Persian    | Planned   | N/A               | Planned for future support     |
+
+
 # License
 This project is licensed under the MIT License - see the [LICENSE](https://github.com/ShoukanLabs/VoPho/blob/main/LICENSE) file for details.

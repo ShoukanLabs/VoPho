@@ -1,7 +1,7 @@
 from VoPho.engine import Phonemizer
 from time import time
 
-input_text = "hello, 你好は中国語でこんにちはと言う意味をしています。 ます。 (testing, this is a test) [me too], Привет"
+input_text = "hello, 你好は中国語でこんにちはと言う意味をしています。 ます。 ราบรื่น"
 
 engine = Phonemizer()
 start = time()
