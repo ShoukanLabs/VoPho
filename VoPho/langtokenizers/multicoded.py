@@ -1,3 +1,4 @@
+import string
 import warnings
 import re
 from fast_langdetect import detect
@@ -145,13 +146,10 @@ class Tokenizer:
         """
         has_writing_system = False
         if len(char) > 1:
-            for character in char:
-                is_writing = self.is_writing_system(character, self.detect_writing_system(character))
-                if is_writing:
-                    has_writing_system = True
-                    break
+            valid_chars = set(string.punctuation + ' ')
 
-            return not char.isalnum() and not char.isspace() and not has_writing_system
+            # Check if all characters in the string are in valid_chars
+            return all(chari in valid_chars for chari in char)
         else:
             return not char.isalnum() and not char.isspace() and not self.is_writing_system(char, self.detect_writing_system(char))
 
