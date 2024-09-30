@@ -1049,23 +1049,6 @@ def process_japanese_text(ml):
     return output.lstrip()
 
 
-# def replace_repeating_patterns(text):
-#     def replace_repeats(match):
-#         pattern = match.group(1)
-#         if len(match.group(0)) // len(pattern) >= 3:
-#             return pattern + "~~~"
-#         return match.group(0)
-
-#     # Pattern for space-separated repeats
-#     pattern1 = r'((?:\S+\s+){1,5}?)(?:\1){2,}'
-#     # Pattern for continuous repeats without spaces
-#     pattern2 = r'(.+?)\1{2,}'
-
-#     text = re.sub(pattern1, replace_repeats, text)
-#     text = re.sub(pattern2, replace_repeats, text)
-#     return text
-
-
 def replace_repeating_a(output):
     # Define patterns and their replacements
     patterns = [
