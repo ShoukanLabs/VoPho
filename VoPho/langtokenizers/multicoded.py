@@ -1,7 +1,10 @@
+import json
+import os
 import string
 import warnings
 import re
-from fast_langdetect import detect
+from langdetect import detect_langs
+from langdetect.lang_detect_exception import LangDetectException
 import random
 from termcolor import colored
 
@@ -15,54 +18,42 @@ WRITING_SYSTEMS_UNICODE_RANGES = {
     'deva': [(0x0900, 0x097F)],  # Devanagari (used for Hindi, Sanskrit, etc.)
     'he': [(0x0590, 0x05FF)],  # Hebrew
     'th': [(0x0E00, 0x0E7F)],  # Thai
-    # Add other writing systems here as needed
 }
 
 # Mapping of predefined language codes to specific colors
 LANGUAGE_COLORS = {
-    'en': 'green',  # Chinese
-    'zh': 'yellow',  # Chinese
-    'ja': 'cyan',  # Japanese
-    'ko': 'blue',  # Korean
-    'ar': 'green',  # Arabic
-    'cy': 'magenta',  # Cyrillic
-    'hi': 'red',  # Devanagari
-    'mr': 'red',  # Devanagari
-    'he': 'white',  # Hebrew
-    'th': 'blue',  # Thai
-    '??': 'red'  # Undefined or unknown languages
+    'en': 'green',
+    'zh': 'yellow',
+    'ja': 'cyan',
+    'ko': 'blue',
+    'ar': 'green',
+    'cy': 'magenta',
+    'hi': 'red',
+    'mr': 'red',
+    'he': 'white',
+    'th': 'blue',
+    '??': 'red'
 }
 
-# Keep track of colors assigned to never-before-seen languages
 unknown_language_colors = {}
 
 
 def random_color():
-    """Returns a random color from the set of basic colors."""
     colors = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white']
     return random.choice(colors)
 
 
 def print_colored_text(text):
-    """
-    Print the tokenized text with each language in a different color.
-    New, unseen languages get assigned a random color,
-    while unknown languages ('??') get a dark red color.
-    """
     pattern = r'<(\w+)>(.*?)</\1>'
     last_pos = 0
 
-    # Iterate over each detected language segment
     for match in re.finditer(pattern, text):
         lang, content = match.groups()
         start, end = match.span()
 
-        # Print any non-matching text before the tokenized segment
         if last_pos < start:
-            if text[last_pos:start] is not None:
-                print(text[last_pos:start], end="")
+            print(text[last_pos:start], end="")
 
-        # Assign a random color to new languages
         if lang not in LANGUAGE_COLORS:
             if lang not in unknown_language_colors:
                 unknown_language_colors[lang] = random_color()
@@ -70,55 +61,70 @@ def print_colored_text(text):
         else:
             color = LANGUAGE_COLORS[lang]
 
-        # Assign dark red for undefined languages ('??')
         if lang == "??":
             color = 'red'
 
-        # Print the content in the assigned color
-        if content is not None:
-            print(colored(content, color), end="")
-            last_pos = end
+        print(colored(content, color), end="")
+        last_pos = end
 
-    # Print any remaining part of the text after the last token
     if last_pos < len(text):
-        if text[last_pos:] is not None:
-            print(text[last_pos:])
+        print(text[last_pos:])
+
+
+def load_manual_word_dict(file_path='manual_word_dict.json'):
+    base_path = os.path.dirname(__file__)  # Directory of the current file
+    file_path = os.path.join(base_path, file_path)
+    try:
+        with open(file_path, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print(f"Warning: {file_path} not found. Using empty dictionary.")
+        return {}
+
+
+def manual_tag(sentence, manual_word_dict):
+    # Convert the sentence to lowercase and strip it of extra spaces
+    sentence_lower = sentence.lower().strip()
+    # Split the sentence into words
+    words = sentence_lower.split()
+    # Check each word against the manual dictionary
+    for word in words:
+        # Check if the word is in the manual dictionary
+        if word in manual_word_dict:
+            return manual_word_dict[word]
+    return None  # Return None if no match is found
 
 
 class Tokenizer:
     def __init__(self):
-        """
-        The base VoPho tokenizer class
-        """
+        self.min_confidence = 0.5
+        self.manual_word_dict = load_manual_word_dict()
+
+    def detect_language(self, text):
+        # Adjusted logic to improve language detection
+        text_lower = text.lower().strip()
+        manual_lang = manual_tag(text_lower, self.manual_word_dict)
+        if manual_lang:
+            return manual_lang
+        try:
+            langs = detect_langs(text)
+            for lang in langs:
+                if lang.prob >= self.min_confidence:
+                    return lang.lang
+            return '??'
+        except LangDetectException:
+            return '??'
 
     @staticmethod
     def is_writing_system(char, system):
-        """
-        Check if a character belongs to a specific writing system.
-        """
         code_point = ord(char)
         return any(start <= code_point <= end for start, end in WRITING_SYSTEMS_UNICODE_RANGES.get(system, []))
 
     @staticmethod
     def detect_japanese_korean_chinese(text):
-        is_japanese = False
-        is_korean = False
-        is_chinese = False
-
-        for char in text:
-            code_point = ord(char)
-
-            # Check for Chinese characters (CJK ideograms)
-            if any(start <= code_point <= end for start, end in WRITING_SYSTEMS_UNICODE_RANGES['zh']):
-                is_chinese = True
-
-            # Check for Japanese characters (Hiragana, Katakana)
-            if any(start <= code_point <= end for start, end in WRITING_SYSTEMS_UNICODE_RANGES['ja']):
-                is_japanese = True
-
-            # Check for Korean characters (Hangul)
-            if any(start <= code_point <= end for start, end in WRITING_SYSTEMS_UNICODE_RANGES['ko']):
-                is_korean = True
+        is_japanese = any(Tokenizer.is_writing_system(char, 'ja') for char in text)
+        is_korean = any(Tokenizer.is_writing_system(char, 'ko') for char in text)
+        is_chinese = any(Tokenizer.is_writing_system(char, 'zh') for char in text)
 
         if is_japanese:
             return "ja"
@@ -130,33 +136,24 @@ class Tokenizer:
             return "??"
 
     def detect_writing_system(self, text):
-        """
-        Detect which writing system a text belongs to.
-        """
         for system, ranges in WRITING_SYSTEMS_UNICODE_RANGES.items():
             if any(ord(char) in range(start, end + 1) for char in text for start, end in ranges):
                 if system not in ["zh", "ja", "ko"]:
                     return system
                 else:
                     return "cjk"
+        return None
 
     def is_punctuation(self, char):
-        """
-        Check if a character is a punctuation mark.
-        """
-        has_writing_system = False
         if len(char) > 1:
             valid_chars = set(string.punctuation + ' ')
-
-            # Check if all characters in the string are in valid_chars
-            return all(chari in valid_chars for chari in char)
+            return all(c in valid_chars for c in char)
         else:
-            return not char.isalnum() and not char.isspace() and not self.is_writing_system(char, self.detect_writing_system(char))
+            return not char.isalnum() and not char.isspace() and not self.is_writing_system(char,
+                                                                                            self.detect_writing_system(
+                                                                                                char))
 
     def split_text_by_writing_system(self, text):
-        """
-        Split text into segments based on different writing systems.
-        """
         segments = []
         current_segment = ""
         current_type = None
@@ -185,16 +182,10 @@ class Tokenizer:
 
     @staticmethod
     def split_non_cjk_in_segment(text):
-        """
-        Split non-CJK text into individual words or punctuation.
-        """
         return re.findall(r'[\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF。]'
                           r'+(?:\s*)|[\w.,!?;:\'"(){}\[\]\-–—\s]+', text)
 
     def _tokenize(self, text):
-        """
-        Tokenize text by detecting writing systems and handling punctuation.
-        """
         segments = self.split_text_by_writing_system(text)
         processed_segments = []
 
@@ -206,13 +197,8 @@ class Tokenizer:
                 if seg_type != "deva":
                     processed_segments.append(f"<{seg_type}>{segment}</{seg_type}>")
                 else:
-                    try:
-                        lang = detect(segment)["lang"]
-
-                        processed_segments.append(f"<{lang}>{segment.strip()}</{lang}>")
-                    except Exception as e:
-                        processed_segments.append(f"<??>{segment.strip()}</??>")
-
+                    lang = self.detect_language(segment)
+                    processed_segments.append(f"<{lang}>{segment.strip()}</{lang}>")
             elif seg_type == "punctuation":
                 processed_segments.append(f"<punctuation>{segment}</punctuation>")
             else:
@@ -228,33 +214,23 @@ class Tokenizer:
                         processed_segments.append(f"<punctuation>{word}</punctuation>")
                         current_lang = None
                     else:
-                        try:
-                            lang = detect(word)["lang"]
-                            if lang != current_lang:
-                                if current_segment:
-                                    processed_segments.append(
-                                        f"<{current_lang}>{current_segment.strip()}</{current_lang}>")
-                                    current_segment = ""
-                                current_lang = lang
-                            current_segment += word + " "
-                        except Exception as e:
+                        lang = self.detect_language(word)
+                        if lang != current_lang:
                             if current_segment:
-                                processed_segments.append(f"<??>{current_segment.strip()}</??>")
+                                processed_segments.append(
+                                    f"<{current_lang}>{current_segment.strip()}</{current_lang}>")
                                 current_segment = ""
-                            processed_segments.append(word)
-                            current_lang = None
+                            current_lang = lang
+                        current_segment += word + " "
 
+                # Handle any remaining text
                 if current_segment:
                     processed_segments.append(f"<{current_lang}>{current_segment.strip()}</{current_lang}>")
 
         return "".join(processed_segments)
 
-    @staticmethod
-    def _group_segments(text):
-        """
-        Group segments of the same language or writing system together.
-        """
-        pattern = r'(<(\w+)>.*?</\2>|[^\w\s])'
+    def _group_segments(self, text):
+        pattern = r'(<(\w+)>.*?</\2>|<punctuation>.*?</punctuation>)'
         tokens = re.findall(pattern, text)
 
         grouped_segments = []
@@ -273,23 +249,17 @@ class Tokenizer:
                     current_content = [content]
             else:
                 if current_content:
-                    if segment == '':
-                        current_content[-1] += segment
-                    else:
-                        current_content[-1] += segment
+                    current_content[-1] += segment
                 else:
                     grouped_segments.append(segment)
 
         if current_content:
             grouped_segments.append(f"<{current_lang}>{''.join(current_content)}</{current_lang}>")
 
-        return (''.join(grouped_segments).replace("<punctuation>", "")
-                .replace("</punctuation>", " "))
+        # Clean up punctuation handling
+        return ''.join(grouped_segments).replace("<punctuation>", "").replace("</punctuation>", " ")
 
     def tokenize(self, text, group=True):
-        """
-        Tokenize input text and optionally group segments of the same writing system.
-        """
         result = self._tokenize(text)
         if group:
             result = self._group_segments(result)
@@ -299,12 +269,13 @@ class Tokenizer:
         return result
 
 
+# Main function
 if __name__ == "__main__":
-    input_text = "hello, 你好は中国語でこんにちはと言う意味をしています。مرحبا! Привет! नमस्ते! จะ ราบรื่น"
+    input_text = "hello, 音素のテストを行うことは、発音の理解を深めるために重要です。"
     token = Tokenizer()
     processed_text = token.tokenize(input_text)
     print("Input text:")
     print(input_text)
     print("\nProcessed text:")
     print(processed_text)
-    print(print_colored_text(processed_text))
+    print_colored_text(processed_text)
