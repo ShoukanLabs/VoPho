@@ -127,10 +127,11 @@ class Phonemizer:
         result = []
 
         for item in separated:
-            if self.Tokenizer.detect_japanese_korean_chinese(item["text"]) != "??":
-                result.extend(self._process_cjk_segment(item))
-            else:
-                result.append(item)
+            # if self.Tokenizer.detect_japanese_korean_chinese(item["text"]) != "??":
+            #     result.append(self._process_cjk_segment(item))
+            # else:
+            result.append(item)
+
 
         phonemized_result = []
         for item in result:

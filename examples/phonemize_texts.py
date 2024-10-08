@@ -1,7 +1,7 @@
 from VoPho.engine import Phonemizer
 from time import time
 
-input_text = "An understanding of the natural world is a source of not only great curiosity, but great fulfilment."
+input_text = "I suppose i can, dont take my word for it though. 音素のテストを行うことは、発音の理解を深めるために重要です。"
 
 engine = Phonemizer()
 start = time()
