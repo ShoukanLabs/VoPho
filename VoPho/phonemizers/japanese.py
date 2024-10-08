@@ -56,7 +56,100 @@ def replace_tashdid_2(s):
             i += 1
     return ''.join(result)
 
-# MARK: legacy
+def replace_tashdid(input_string):
+    result = []
+    i = 0
+    while i < len(input_string):
+        if i + 1 < len(input_string) and input_string[i] == input_string[i + 1] and input_string[i] not in 'aiueo':
+            result.append('ʔ')
+            result.append(input_string[i])
+            i += 2  # Skip the next character as it is already processed
+        else:
+            result.append(input_string[i])
+            i += 1
+    return ''.join(result)
+
+
+def hira2ipa(text, roma_mapper=roma_mapper):
+    keys_set = set(roma_mapper.keys())
+    special_rule = ("n", "ɴ")
+
+    transformed_text = []
+    i = 0
+
+    while i < len(text):
+        if text[i] == special_rule[0]:
+            if i + 1 == len(text) or text[i + 1] not in keys_set:
+                transformed_text.append(special_rule[1])
+            else:
+                transformed_text.append(text[i])
+        else:
+            transformed_text.append(text[i])
+
+        i += 1
+
+    return ''.join(transformed_text)
+
+
+def process_japanese_text(ml):
+    # Check for small characters and replace them
+    if any(char in ml for char in "ぁぃぅぇぉ"):
+        ml = ml.replace("ぁ", "あ")
+        ml = ml.replace("ぃ", "い")
+        ml = ml.replace("ぅ", "う")
+        ml = ml.replace("ぇ", "え")
+        ml = ml.replace("ぉ", "お")
+
+    # Initialize Cutlet for romaji conversion
+
+    # Convert to romaji and apply transformations
+    # output = katsu.romaji(ml, capitalize=False).lower()
+
+    output = katsu.romaji(apply_transformations(alphabetreading(ml)), capitalize=False).lower()
+
+    # Replace specific romaji sequences
+    if 'j' in output:
+        output = output.replace('j', "dʑ")
+    if 'tt' in output:
+        output = output.replace('tt', "ʔt")
+    if 't t' in output:
+        output = output.replace('t t', "ʔt")
+    if ' ʔt' in output:
+        output = output.replace(' ʔt', "ʔt")
+    if 'ssh' in output:
+        output = output.replace('ssh', "ɕɕ")
+
+    # Convert romaji to IPA
+    output = Roma2IPA(convert_numbers_in_string(output))
+
+    output = hira2ipa(output)
+
+    # Apply additional transformations
+    output = replace_chars_2(output)
+    output = replace_repeated_chars(replace_tashdid_2(output))
+    output = nasal_mapper(output)
+
+    # Final adjustments
+    if " ɴ" in output:
+        output = output.replace(" ɴ", "ɴ")
+
+    if ' neɽitai ' in output:
+        output = output.replace(' neɽitai ', "naɽitai")
+
+    if 'harɯdʑisama' in output:
+        output = output.replace('harɯdʑisama', "arɯdʑisama")
+
+    if "ki ni ɕinai" in output:
+        output = re.sub(r'(?<!\s)ki ni ɕinai', r' ki ni ɕinai', output)
+
+    if 'ʔt' in output:
+        output = re.sub(r'(?<!\s)ʔt', r'ʔt', output)
+
+    if 'de aɽoɯ' in output:
+        output = re.sub(r'(?<!\s)de aɽoɯ', r' de aɽoɯ', output)
+
+    return output.lstrip()
+
 def replace_repeating_a(output):
     # Define patterns and their replacements
     patterns = [
@@ -738,6 +831,7 @@ class Phonemizer:
         output = output.replace('a aː', 'a~').replace('a a', 'a~')
         output = replace_repeating_a(output)
         output = re.sub(r'\s+~', '~', output)
+
         output = output.replace('oː~o oː~ o', 'oː~~~~~~')
         output = output.replace('aː~aː', 'aː~~~')
         output = output.replace('oɴ naː', 'onnaː')
@@ -752,3 +846,4 @@ class Phonemizer:
         if text.endswith(' '):
             output += ' '
         return output
+
