@@ -146,12 +146,14 @@ class Tokenizer:
 
     def is_punctuation(self, char):
         if len(char) > 1:
-            valid_chars = set(string.punctuation + ' ')
-            return all(c in valid_chars for c in char)
+            # Valid punctuation characters, including space
+            return all(self.is_punctuation(c) for c in char)  # Check each character individually
         else:
-            return not char.isalnum() and not char.isspace() and not self.is_writing_system(char,
-                                                                                            self.detect_writing_system(
-                                                                                                char))
+            # Single character check (as per your original logic)
+            return (not char.isalnum()  # Is not alphanumeric
+                    and not char.isspace()  # Is not whitespace
+                    and not self.is_writing_system(char, self.detect_writing_system(char)))  # Is not in a writing system                                                                             self.detect_writing_system(
+                                                                                                
 
     def split_text_by_writing_system(self, text):
         segments = []
