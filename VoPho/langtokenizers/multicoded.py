@@ -112,7 +112,6 @@ class Tokenizer:
             langs = self.detector.detect_language_of(text)
             if langs is not None:
                 langs = langs.iso_code_639_1.name.lower()
-                print(langs, text)
                 return langs
             else:
                 return '??'
@@ -151,6 +150,7 @@ class Tokenizer:
         return None
 
     def is_punctuation(self, char):
+        not_punctuation = ["'", '"', "(", ")", "{", "}", "[", "]", "&"]
         if len(char) > 1:
             # Valid punctuation characters, including space
             return all(self.is_punctuation(c) for c in char)  # Check each character individually
@@ -158,7 +158,8 @@ class Tokenizer:
             # Single character check (as per your original logic)
             return (not char.isalnum()  # Is not alphanumeric
                     and not char.isspace()  # Is not whitespace
-                    and not self.is_writing_system(char, self.detect_writing_system(char)))  # Is not in a writing system                                                                             self.detect_writing_system(
+                    and not self.is_writing_system(char, self.detect_writing_system(char))
+                    and char not in not_punctuation)  # Is not in a writing system                                                                             self.detect_writing_system(
                                                                                                 
 
     def split_text_by_writing_system(self, text):
@@ -279,7 +280,7 @@ class Tokenizer:
 
 # Main function
 if __name__ == "__main__":
-    input_text = "测试音素对于加深对发音的理解非常重要。 音素のテストを行うことは、発音の理解を深めるために重要です。"
+    input_text = "don't do that please"
     token = Tokenizer()
     processed_text = token.tokenize(input_text)
     print("Input text:")
