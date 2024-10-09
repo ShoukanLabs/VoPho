@@ -110,10 +110,13 @@ class Phonemizer:
         :param lang: The language ID for phonemization
         :return: Phonemized text, or original text wrapped in <??> tags if language is not supported
         """
-        phonemizer = self.get_phonemizer(lang)
-        if phonemizer:
-            return phonemizer.phonemize(text)
-        return f"<??>{text}</??>"  # Return original text if no phonemizer available
+        if lang != "phoneme":
+            phonemizer = self.get_phonemizer(lang)
+            if phonemizer:
+                return phonemizer.phonemize(text)
+            return f"<??>{text}</??>"  # Return original text if no phonemizer available
+        else:
+            return text
 
     def phonemize(self, input_text, output_dict=False):
         """

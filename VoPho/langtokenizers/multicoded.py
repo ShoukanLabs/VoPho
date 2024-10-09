@@ -33,6 +33,7 @@ LANGUAGE_COLORS = {
     'mr': 'red',
     'he': 'white',
     'th': 'blue',
+    'phoneme': 'blue',
     '??': 'red'
 }
 
@@ -269,12 +270,28 @@ class Tokenizer:
         return ''.join(grouped_segments).replace("<punctuation>", "").replace("</punctuation>", " ")
 
     def tokenize(self, text, group=True):
-        result = self._tokenize(text)
+        # Split the input text into segments based on existing tags
+        pattern = r'(<\w+>.*?</\w+>)|([^<]+)'  # Matches either tagged segments or untagged text
+        segments = re.findall(pattern, text)
+
+        processed_segments = []
+
+        for tagged_segment, untagged_segment in segments:
+            if tagged_segment:  # If this segment is already tagged, just add it
+                processed_segments.append(tagged_segment)
+            else:  # If the segment is untagged, process it as usual
+                result = self._tokenize(untagged_segment)
+                processed_segments.append(result)
+
+        result = ''.join(processed_segments)
+
         if group:
             result = self._group_segments(result)
+
         if "<??>" in result:
             warnings.warn(
                 "Your output contains tokenization errors. We were unable to detect a language or writing system, or there was an error in processing.")
+
         return result
 
 

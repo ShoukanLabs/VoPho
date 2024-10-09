@@ -1,7 +1,7 @@
 from VoPho.engine import Phonemizer
 from time import time
 
-input_text = "I suppose i can, dont take my word for it though. 音素のテストを行うことは、発音の理解を深めるために重要です。"
+input_text = "<phoneme>I suppose i can</phoneme>, dont take my word for it though. 音素のテストを行うことは、発音の理解を深めるために重要です。"
 
 engine = Phonemizer()
 start = time()
