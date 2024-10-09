@@ -117,8 +117,12 @@ class Tokenizer:
 
     @staticmethod
     def is_writing_system(char, system):
-        code_point = ord(char)
-        return any(start <= code_point <= end for start, end in WRITING_SYSTEMS_UNICODE_RANGES.get(system, []))
+        if len(char) > 1:
+            # Valid punctuation characters, including space
+            return all(self.is_writing_system(c) for c in char)  # Check each character individually
+        else:
+            code_point = ord(char)
+            return any(start <= code_point <= end for start, end in WRITING_SYSTEMS_UNICODE_RANGES.get(system, []))
 
     @staticmethod
     def detect_japanese_korean_chinese(text):
