@@ -279,7 +279,7 @@ class Tokenizer:
 
 # Main function
 if __name__ == "__main__":
-    input_text = "hello, how are you? the grandiosity of the matter is astonishing. 音素のテストを行うことは、発音の理解を深めるために重要です。"
+    input_text = "测试音素对于加深对发音的理解非常重要。 音素のテストを行うことは、発音の理解を深めるために重要です。"
     token = Tokenizer()
     processed_text = token.tokenize(input_text)
     print("Input text:")
