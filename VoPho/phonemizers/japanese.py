@@ -70,7 +70,7 @@ def replace_tashdid(input_string):
     return ''.join(result)
 
 
-def hira2ipa(text, roma_mapper=roma_mapper):
+def hira2ipa(text, roma_mapper):
     keys_set = set(roma_mapper.keys())
     special_rule = ("n", "ɴ")
 
