@@ -33,6 +33,7 @@ LANGUAGE_COLORS = {
     'mr': 'red',
     'he': 'white',
     'th': 'blue',
+    'phoneme': 'blue',
     '??': 'red'
 }
 
