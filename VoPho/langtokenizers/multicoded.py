@@ -5,6 +5,7 @@ import warnings
 import re
 from langdetect import detect_langs
 from langdetect.lang_detect_exception import LangDetectException
+from lingua import LanguageDetectorBuilder
 import random
 from termcolor import colored
 
@@ -99,6 +100,7 @@ class Tokenizer:
     def __init__(self):
         self.min_confidence = 0.5
         self.manual_word_dict = load_manual_word_dict()
+        self.detector = LanguageDetectorBuilder.from_all_languages().build()
 
     def detect_language(self, text):
         # Adjusted logic to improve language detection
@@ -107,16 +109,17 @@ class Tokenizer:
         if manual_lang:
             return manual_lang
         try:
-            langs = detect_langs(text)
-            for lang in langs:
-                if lang.prob >= self.min_confidence:
-                    return lang.lang
-            return '??'
+            langs = self.detector.detect_language_of(text)
+            if langs is not None:
+                langs = langs.iso_code_639_1.name.lower()
+                print(langs, text)
+                return langs
+            else:
+                return '??'
         except LangDetectException:
             return '??'
 
-    @staticmethod
-    def is_writing_system(char, system):
+    def is_writing_system(self, char, system):
         if len(char) > 1:
             # Valid punctuation characters, including space
             return all(self.is_writing_system(c) for c in char)  # Check each character individually
@@ -124,11 +127,10 @@ class Tokenizer:
             code_point = ord(char)
             return any(start <= code_point <= end for start, end in WRITING_SYSTEMS_UNICODE_RANGES.get(system, []))
 
-    @staticmethod
-    def detect_japanese_korean_chinese(text):
-        is_japanese = any(Tokenizer.is_writing_system(char, 'ja') for char in text)
-        is_korean = any(Tokenizer.is_writing_system(char, 'ko') for char in text)
-        is_chinese = any(Tokenizer.is_writing_system(char, 'zh') for char in text)
+    def detect_japanese_korean_chinese(self, text):
+        is_japanese = any(self.is_writing_system(char, 'ja') for char in text)
+        is_korean = any(self.is_writing_system(char, 'ko') for char in text)
+        is_chinese = any(self.is_writing_system(char, 'zh') for char in text)
 
         if is_japanese:
             return "ja"
@@ -277,7 +279,7 @@ class Tokenizer:
 
 # Main function
 if __name__ == "__main__":
-    input_text = "hello, 音素のテストを行うことは、発音の理解を深めるために重要です。"
+    input_text = "hello, how are you? the grandiosity of the matter is astonishing. 音素のテストを行うことは、発音の理解を深めるために重要です。"
     token = Tokenizer()
     processed_text = token.tokenize(input_text)
     print("Input text:")
