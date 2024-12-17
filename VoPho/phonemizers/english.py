@@ -1,214 +1,38 @@
+import os
 import re
+
+import nltk
 from openphonemizer import OpenPhonemizer
+
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
+
+from pywsd.lesk import simple_lesk
+
+nltk.download("wordnet", quiet=True)
+
+from nltk.corpus import wordnet
+
+os.environ['PYTHONIOENCODING'] = 'utf-8'
+
+import epitran
+
+# Initialize Epitran for IPA transcription
+# Enforce UTF-8 globally
+os.environ['PYTHONIOENCODING'] = 'utf-8'
+
+try:
+    epi = epitran.Epitran('eng-Latn')
+except UnicodeDecodeError:
+    raise OSError("epitran could not be loaded. if you're on windows, in control panel > region, "
+                  "Check Beta: Use Unicode UTF-8 for worldwide language support")
+
+from nltk.tokenize import word_tokenize
 
 general = {
     # Basic contractions and common words
-    "I'm": "aɪm",
-    "you're": "jɔːr",
-    "we're": "wɪər",
-    "they're": "ðɛər",
-    "isn't": "ɪznt",
-    "aren't": "ɑːrnt",
-    "can't": "kænt",
-    "won't": "woʊnt",
-    "don't": "doʊnt",
-    "I'll": "aɪl",
-    "you'll": "juːl",
-    "we'll": "wiːl",
-    "he'll": "hiːl",
-    "she'll": "ʃiːl",
-    "it'll": "ɪtl",
-    "there's": "ðɛrz",
-    "here's": "hɪrz",
-    "that's": "ðæts",
-    "what's": "wɒts",
-    "where's": "wɛrz",
-    "who's": "huːz",
-    "let's": "lɛts",
-    "didn't": "dɪdnt",
-    "couldn't": "kʊdnt",
-    "shouldn't": "ʃʊdnt",
-    "wouldn't": "wʊdnt",
-    "I've": "aɪv",
-    "you've": "juːv",
-    "we've": "wiːv",
-    "they've": "ðeɪv",
-    "y'all": "jɔːl",
-
-    # Proper names or common mispronunciations
-    "Google": "ɡuːɡl",
-    "Linux": "lɪnʊks",
-    "Tesla": "tɛslə",
-    "Elon": "iːlɒn",
-    "AI": "eɪ aɪ",
-    "NASA": "næsə",
-    "COVID": "koʊvɪd",
-    "GIF": "dʒɪf",
-    "JPEG": "dʒeɪpɛɡ",
-    "Python": "paɪθɒn",
-
-    # Contextual fixes: Words that change pronunciation based on context
-
-    # Context-based past tense of "read"
-    "I read": "aɪ rɛd",  # past tense
-    "you read": "juː rɛd",  # past tense
-    "he read": "hiː rɛd",  # past tense
-    "she read": "ʃiː rɛd",  # past tense
-    "we read": "wiː rɛd",  # past tense
-    "they read": "ðeɪ rɛd",  # past tense
-
-    # Present tense of "read"
-    "I will read": "aɪ wɪl riːd",
-    "you will read": "juː wɪl riːd",
-    "he will read": "hiː wɪl riːd",
-    "she will read": "ʃiː wɪl riːd",
-    "we will read": "wiː wɪl riːd",
-    "they will read": "ðeɪ wɪl riːd",
-    "I can read": "aɪ kæn riːd",
-    "you can read": "juː kæn riːd",
-    "he can read": "hiː kæn riːd",
-    "she can read": "ʃiː kæn riːd",
-    "we can read": "wiː kæn riːd",
-    "they can read": "ðeɪ kæn riːd",
-
-    # Contextual forms of "live"
-    "I live": "aɪ lɪv",  # verb (reside)
-    "you live": "juː lɪv",  # verb (reside)
-    "he lives": "hiː lɪvz",  # verb (reside)
-    "she lives": "ʃiː lɪvz",  # verb (reside)
-    "we live": "wiː lɪv",  # verb (reside)
-    "they live": "ðeɪ lɪv",  # verb (reside)
-
-    # "live" as in "broadcast"
-    "a live broadcast": "ə laɪv brɔːdkæst",
-    "live TV": "laɪv tiːviː",
-    "live stream": "laɪv striːm",
-    "is live": "ɪz laɪv",
-
-    # Contextual forms of "wind"
-    "the wind": "ðə wɪnd",  # noun
-    "wind is": "wɪnd ɪz",  # noun
-    "to wind": "tuː waɪnd",  # verb (e.g., wind a clock)
-
-    # Contextual forms of "lead"
-    "to lead": "tuː liːd",  # verb (guide)
-    "lead pipe": "lɛd paɪp",  # noun (metal)
-
-    # Contextual forms of "bass"
-    "bass guitar": "beɪs ɡɪˈtɑː",  # instrument
-    "sea bass": "siː bæs",  # fish
-
-    # Contextual fixes for "graduate"
-    "graduate": "ˈɡrædʒuət",  # noun (a person who has graduated)
-    "I graduated": "aɪ ˈɡrædʒueɪtɪd",  # past tense
-    "you graduated": "juː ˈɡrædʒueɪtɪd",  # past tense
-    "he graduated": "hiː ˈɡrædʒueɪtɪd",  # past tense
-    "she graduated": "ʃiː ˈɡrædʒueɪtɪd",  # past tense
-    "we graduated": "wiː ˈɡrædʒueɪtɪd",  # past tense
-    "they graduated": "ðeɪ ˈɡrædʒueɪtɪd",  # past tense
-    "graduate program": "ˈɡrædʒuət ˈprəʊɡræm",  # academic program
-    "graduate school": "ˈɡrædʒuət skuːl",  # advanced education after undergraduate
-    "graduate student": "ˈɡrædʒuət ˈstjuːdənt",  # a student in a graduate program
-    "he is a graduate": "hiː ɪz ə ˈɡrædʒuət",  # stating someone has graduated
-    "she is graduating": "ʃiː ɪz ˈɡrædʒueɪtɪŋ",  # present tense (the act of graduating)
-
-    # Additional context-based fixes for "graduATE"
-    "i will graduate": "aɪ wɪl ˈɡrædʒueɪt",  # future tense
-    "he will graduate": "hiː wɪl ˈɡrædʒueɪt",  # future tense
-    "children graduate": "ˈtʃɪldren ˈɡrædʒueɪt",  # present tense
-    "they will graduate": "ðeɪ wɪl ˈɡrædʒueɪt",  # future tense
-    "students graduate": "ˈstjuːdənts ˈɡrædʒueɪt",  # present tense
-    "the class will graduate": "ðə klæs wɪl ˈɡrædʒueɪt",  # future tense
-    "we will graduate": "wiː wɪl ˈɡrædʒueɪt",  # future tense
-    "the graduates will celebrate": "ðə ˈɡrædʒuəts wɪl ˈsɛlɪˌbreɪt",  # referring to graduates celebrating
-
-    # Contextual forms of "tear"
-    "tear up": "tɛər ʌp",  # verb (to rip)
-    "he tears up": "hiː tɛərz ʌp",  # verb (to rip)
-    "she tears up": "ʃiː tɛərz ʌp",  # verb (to rip)
-    "they tear up": "ðeɪ tɛər ʌp",  # verb (to rip)
-    "you tear up": "juː tɛər ʌp",  # verb (to rip)
-    "we tear up": "wiː tɛər ʌp",  # verb (to rip)
-    "I tear up": "aɪ tɛər ʌp",  # verb (to rip)
-
-    "a tear": "ə tɛr",  # noun (crying)
-    "he has a tear": "hiː hæz ə tɛr",  # noun (cry)
-    "she has a tear": "ʃiː hæz ə tɛr",  # noun (cry)
-    "they have a tear": "ðeɪ hæv ə tɛr",  # noun (cry)
-    "you have a tear": "juː hæv ə tɛr",  # noun (cry)
-    "we have a tear": "wiː hæv ə tɛr",  # noun (cry)
-    "I have a tear": "aɪ hæv ə tɛr",  # noun (cry)
-
-    "he has tears": "hiː hæz tɪrz",  # noun (cry)
-    "she has tears": "ʃiː hæz tɪrz",  # noun (cry)
-    "they have tears": "ðeɪ hæv tɪrz",  # noun (cry)
-    "you have tears": "juː hæv tɪrz",  # noun (cry)
-    "we have tears": "wiː hæv tɪrz",  # noun (cry)
-    "I have tears": "aɪ hæv tɪrz",  # noun (cry)
-
-    "he shed a tear": "hiː ʃɛd ə tɪr",  # noun (cry)
-    "she shed a tear": "ʃiː ʃɛd ə tɪr",  # noun (cry)
-    "they shed a tear": "ðeɪ ʃɛd ə tɪr",  # noun (cry)
-    "you shed a tear": "juː ʃɛd ə tɪr",  # noun (cry)
-    "we shed a tear": "wiː ʃɛd ə tɪr",  # noun (cry)
-    "I shed a tear": "aɪ ʃɛd ə tɪr",  # noun (cry)
-
-    "he's in tears": "hiː z ɪn tɪrz",  # noun (cry)
-    "she's in tears": "ʃiː z ɪn tɪrz",  # noun (cry)
-    "they're in tears": "ðeɪər ɪn tɪrz",  # noun (cry)
-    "you're in tears": "jʊər ɪn tɪrz",  # noun (cry)
-    "we're in tears": "wɪər ɪn tɪrz",  # noun (cry)
-    "i'm in tears": "aɪm ɪn tɪrz",  # noun (cry)
-
-    # Contextual forms of "record"
-    "to record": "tuː rɪˈkɔːrd",  # verb (to capture sound)
-    "a record": "ə ˈrɛkərd",
-    "my record": "maɪ ˈrɛkərd",
-    "your record": "jʊər ˈrɛkərd",
-    "his record": "hɪz ˈrɛkərd",
-    "her record": "hɜːr ˈrɛkərd",
-    "our record": "aʊər ˈrɛkərd",
-    "their record": "ðeər ˈrɛkərd",
-
-    # Contextual fixes for "record" as a verb (to document)
-    "I record": "aɪ rɪˈkɔːrd",
-    "you record": "juː rɪˈkɔːrd",
-    "he records": "hiː rɪˈkɔːrdz",
-    "she records": "ʃiː rɪˈkɔːrdz",
-    "we record": "wiː rɪˈkɔːrd",
-    "they record": "ðeɪ rɪˈkɔːrd",
-    "will record": "wɪl rɪˈkɔːrd",
-
-    # Additional contexts for "record"
-    "this record": "ðɪs ˈrɛkərd",
-    "that record": "ðæt ˈrɛkərd",
-    "the record": "ðə ˈrɛkərd",
-
-    # Contextual fixes for "I have a record"
-    "I have a record": "aɪ hæv ə ˈrɛkərd",
-    "you have a record": "juː hæv ə ˈrɛkərd",
-    "he has a record": "hiː hæz ə ˈrɛkərd",
-    "she has a record": "ʃiː hæz ə ˈrɛkərd",
-    "we have a record": "wiː hæv ə ˈrɛkərd",
-    "they have a record": "ðeɪ hæv ə ˈrɛkərd",
-
-    # Contextual fixes for "keeping a record"
-    "I keep a record": "aɪ kiːp ə ˈrɛkərd",
-    "you keep a record": "juː kiːp ə ˈrɛkərd",
-    "he keeps a record": "hiː kiːps ə ˈrɛkərd",
-    "she keeps a record": "ʃiː kiːps ə ˈrɛkərd",
-    "we keep a record": "wiː kiːp ə ˈrɛkərd",
-    "they keep a record": "ðeɪ kiːp ə ˈrɛkərd",
-
-    # Contextual fixes for "break a record"
-    "I break a record": "aɪ breɪk ə ˈrɛkərd",
-    "you break a record": "juː breɪk ə ˈrɛkərd",
-    "he breaks a record": "hiː breɪks ə ˈrɛkərd",
-    "she breaks a record": "ʃiː breɪks ə ˈrɛkərd",
-    "we break a record": "wiː breɪk ə ˈrɛkərd",
-    "they break a record": "ðeɪ breɪk ə ˈrɛkərd",
+    "y'all": "jɔːl"
 }
-
 
 # Proper names and common mispronunciations
 proper_names = {
@@ -284,15 +108,172 @@ common_mispronunciations = {
 # Combine both dictionaries
 manual_phonemizations = {**general, **proper_names, **common_mispronunciations}
 
+model = SentenceTransformer('all-MiniLM-L6-v2')
+
+word_definitions = {
+    "lead": {
+        "to guide or direct": "liːd",
+        "a type of metal": "lɛd"
+    },
+    "tear": {
+        "separate or cause to separate abruptly": "tɛər",
+        "fill with tears or shed tears": "tɪər"
+    },
+    "read": {
+        "to look at and comprehend written words": "riːd",
+        "past tense of read": "rɛd"
+    },
+    "wind": {
+        "moving air": "wɪnd",
+        "to twist or coil": "wɪnd"
+    },
+    "row": {
+        "a linear arrangement of things": "roʊ",
+        "to propel a boat": "raʊ"
+    },
+    "live": {
+        "to be alive": "lɪv",
+        "happening in real time": "laɪv"
+    },
+    "close": {
+        "to shut something": "kloʊs",
+        "near": "kloʊs"
+    },
+    "bass": {
+        "a type of fish": "beɪs",
+        "low-frequency sound or voice": "bæs"
+    }
+}
+
+### ^^^ PLACEHOLDER UNTIL MANUAL DICT CREATED
+
+
+def get_most_similar_definition(word, query):
+    if word not in word_definitions:
+        return "", word
+
+    # Get the definitions of the word
+    definitions = word_definitions[word]
+
+    # Encode the query sentence and definitions using the model
+    if query not in definitions:
+        query_embedding = model.encode([query])
+        definition_embeddings = model.encode(list(definitions.keys()))
+
+        # Calculate cosine similarity between the query and the definitions
+        similarities = cosine_similarity(query_embedding, definition_embeddings)
+
+        # Find the index of the most similar definition
+        most_similar_index = similarities.argmax()
+
+        # Return the most similar definition
+        most_similar_definition = list(definitions.keys())[most_similar_index]
+        return most_similar_definition, definitions[most_similar_definition]
+    else:
+        return query, definitions[query]
+
+# Function to check if a word is a homonym
+def is_homonym(word):
+    synsets = wordnet.synsets(word)
+
+    filtered_sysnets = []
+
+    for synset in synsets:
+        if word == synset.name().split(".")[0].lower():
+            filtered_sysnets.append(synset)
+
+    return len(filtered_sysnets) > 1
+
+
+# Function to generate pronunciation dictionary for homonyms
+def generate_pronunciation_dict(word):
+    synsets = wordnet.synsets(word)
+    pronunciation_dict = {}
+
+    for synset in synsets:
+        if synset.name().split(".")[0].lower() == word:
+            definition = synset.definition()
+            # Get the lemma name for transcription
+            lemma_name = synset.lemmas()[0].name().replace("_", " ")
+            # Generate IPA pronunciation using Epitran
+            _, ipa_pronunciation = get_most_similar_definition(word, definition)
+            pronunciation_dict[definition] = ipa_pronunciation
+
+    return pronunciation_dict
+
+
+def replace_homonyms(text):
+    verbose = False
+
+    # Use regex to split text while keeping the delimiters
+    tokens = re.findall(r'\S+|\s+', text)
+    result = tokens.copy()
+
+    # Keep track of homonym indices to process each separately
+    homonym_indices = []
+
+    # First pass: identify homonym indices
+    for i, token in enumerate(tokens):
+        if not token.isspace():
+            word_lower = token.lower()
+            if is_homonym(word_lower):
+                homonym_indices.append(i)
+
+    # Process each homonym separately
+    for index in homonym_indices:
+        # Create a context window around the current word
+        context_start = max(0, index - 3)
+        context_end = min(len(tokens), index + 5)
+
+        # Extract context
+        context_tokens = tokens[context_start:context_end]
+        context = ''.join(context_tokens).lower()
+
+        # Focus on the specific word
+        current_word = tokens[index].lower()
+
+        # Disambiguate meaning using Lesk with the specific context
+        sense = simple_lesk(context, current_word)
+
+        if sense:
+            meaning = sense.definition()
+            # Generate pronunciation dictionary for the word
+            pronunciation_dict = generate_pronunciation_dict(current_word)
+
+            # Find pronunciation for the matching meaning
+            pronunciation = pronunciation_dict.get(meaning, current_word)
+
+            # Verbose output if requested
+            if verbose:
+                # Prepare sliding context window with padding
+                context_display = ''.join(context_tokens)
+                context_width = 20  # Fixed width for consistent display
+                context_padded = (context_display.center(context_width))[:context_width]
+
+                # Prepare meaning with padding/trimming
+                meaning_width = 50  # Fixed width for consistent display
+                meaning_padded = (meaning[:meaning_width].center(meaning_width))[:meaning_width]
+
+                # Print in a formatted way
+                print(f"[{context_padded}] - {meaning_padded}\r")
+
+            # Replace the token with phoneme representation
+            result[index] = f"<phoneme>{pronunciation}</phoneme>"
+
+    if verbose:
+        print("")
+    return ''.join(result)
+
 
 class Phonemizer:
-    def __init__(self, manual_fixes=None):
+    def __init__(self, manual_fixes=None, allow_heteronyms=True): # temporarily allow heteronyms until we fill the dictionary
         if manual_fixes is None:
             manual_fixes = manual_phonemizations
         self.phonemizer = OpenPhonemizer()
 
         # Dictionary of manual phonemizations
         self.manual_phonemizations = manual_fixes
+        self.allow_heteronyms=allow_heteronyms
 
         # Post-processing filters
         self.manual_filters = {
@@ -304,6 +285,9 @@ class Phonemizer:
         self.phoneme_tag_pattern = re.compile(r"<phoneme>(.*?)</phoneme>")
 
     def preprocess(self, text):
+        if not self.allow_heteronyms:
+            text = replace_homonyms(text)
+
         # Replace words in the text with their manual phonemizations wrapped in <phoneme> tags
         for word, ipa in self.manual_phonemizations.items():
             text = re.sub(rf"\b{word}\b", f"<phoneme>{ipa}</phoneme>", text, flags=re.IGNORECASE)
@@ -375,6 +359,6 @@ class Phonemizer:
 
 if __name__ == "__main__":
     phonem = Phonemizer()
-    test_text = "I'm excited because I graduated from a graduate program, and now I can read a record of my achievements. I also tear up when I think about how my friends will graduate too, and they have tears of joy."
+    test_text = "i tear the paper apart, water welling up in my eyes, a tear in my eye"
     print(f"Original: {test_text}")
     print(f"Phonemized: {phonem.phonemize(test_text)}")
