@@ -80,7 +80,7 @@ def load_manual_word_dict(file_path='manual_word_dict.json'):
         with open(file_path, 'r') as f:
             return json.load(f)
     except FileNotFoundError:
-        print(f"Warning: {file_path} not found. Using empty dictionary.")
+        # print(f"Warning: {file_path} not found. Using empty dictionary.")
         return {}
 
 

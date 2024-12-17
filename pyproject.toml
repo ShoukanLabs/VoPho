@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "VoPho"
-version = "0.0.11"
+version = "0.0.12"
 description = "An easy to use Multilingual phonemization meta-library"
 readme = "README.md"
 authors = [
@@ -33,7 +33,10 @@ dependencies = [
     "pythainlp==5.0.4",
     "torch==2.2.0",
     "langdetect==1.0.9",
-    "lingua-language-detector==2.0.2"
+    "lingua-language-detector==2.0.2",
+    "pywsd==1.2.5",
+    "sentence-transformers",
+    "scikit-learn"
 ]
 
 [project.urls]
