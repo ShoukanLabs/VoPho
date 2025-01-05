@@ -745,7 +745,7 @@ assert len(k_mapper) == len({a for a, _ in k_mapper})  # DEBUG: assert unique ke
 #     ('niːkite', 'ni ikite'),
 # ]
 
-spaces = dict([
+spaces = [
     
     ("ɯ ɴ","ɯɴ"),
     ("na ɴ ","naɴ "),
@@ -867,7 +867,6 @@ spaces = dict([
     ("ɕiːk ","ɕi ik"),
     ("ɕijoː neɴ","ɕoɯneɴ"),
     ("aːna","a ana"),
-
 ])
 
 assert len(spaces) == 81, len(spaces)
