@@ -8,7 +8,9 @@ else:
     device = "cpu"
 
 class Phonemizer:
-    def __init__(self, working_path=None):
+    def __init__(self, working_path=None, stress=False):
+        self.stress = stress
+
         self.phonemizer = RUPhon()
         self.phonemizer = self.phonemizer.load("small", workdir=working_path, device=device)
 
@@ -18,6 +20,6 @@ class Phonemizer:
     def phonemize(self, text):
         accented_text = self.accentizer.process_all(text)
 
-        result = self.phonemizer.phonemize(accented_text, put_stress=True, stress_symbol="'")
+        result = self.phonemizer.phonemize(accented_text, put_stress=self.stress, stress_symbol="'")
 
         return result
