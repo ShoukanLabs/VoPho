@@ -105,8 +105,12 @@ common_mispronunciations = {
     "herb": "hɜːrb",  # (often mispronounced as 'urb')
 }
 
+innacurate_from_phonemizer = {
+    "british": "ˈbrɪt.ɪʃ"
+}
+
 # Combine both dictionaries
-manual_phonemizations = {**general, **proper_names, **common_mispronunciations}
+manual_phonemizations = {**general, **proper_names, **common_mispronunciations, **innacurate_from_phonemizer}
 
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
@@ -146,7 +150,6 @@ word_definitions = {
 }
 
 ### ^^^ PLACEHOLDER UNTIL MANUAL DICT CREATED
-
 
 def get_most_similar_definition(word, query):
     if word not in word_definitions:
@@ -266,7 +269,7 @@ def replace_homonyms(text):
 
 
 class Phonemizer:
-    def __init__(self, manual_fixes=None, allow_heteronyms=True): # temporarily allow heteronyms until we fill the dictionary
+    def __init__(self, manual_fixes=None, allow_heteronyms=True, stress=False): # temporarily allow heteronyms until we fill the dictionary
         if manual_fixes is None:
             manual_fixes = manual_phonemizations
         self.phonemizer = OpenPhonemizer()
@@ -274,6 +277,7 @@ class Phonemizer:
         # Dictionary of manual phonemizations
         self.manual_phonemizations = manual_fixes
         self.allow_heteronyms=allow_heteronyms
+        self.stress = stress
 
         # Post-processing filters
         self.manual_filters = {
@@ -295,6 +299,10 @@ class Phonemizer:
 
     def postprocess(self, text):
         # Remove the <phoneme> tags but retain the IPA within them, preserving spaces
+        if not self.stress:
+            text = re.sub("ˈ", "", text)
+            text = re.sub("\u02C8", "", text) # double check
+
         return self.phoneme_tag_pattern.sub(r"\1", text)
 
     def phonemize(self, text):

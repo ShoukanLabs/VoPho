@@ -10,13 +10,15 @@ class Phonemizer:
     A class for phonemizing text in multiple languages,
     """
 
-    def __init__(self, working_path=None):
+    def __init__(self, working_path=None, stress=False):
         """
         Initialize the Phonemizer.
 
         :param working_path: Optional path for working directory
+        :param stress: Optional toggle for stress, for phonemisers that support it
         """
         self.working_path = working_path
+        self.stress = stress
         self._phonemizers = {}
         self.Tokenizer = Tokenizer()
 
@@ -55,7 +57,7 @@ class Phonemizer:
         """
         if lang not in self._phonemizers:
             if lang == 'en':
-                self._phonemizers[lang] = english.Phonemizer()
+                self._phonemizers[lang] = english.Phonemizer(stress=self.stress)
             elif lang == 'ja':
                 self._phonemizers[lang] = japanese.Phonemizer()
             elif lang == 'zh':
