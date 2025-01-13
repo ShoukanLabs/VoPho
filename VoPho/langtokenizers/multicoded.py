@@ -161,7 +161,6 @@ class Tokenizer:
                     and not char.isspace()  # Is not whitespace
                     and not self.is_writing_system(char, self.detect_writing_system(char))
                     and char not in not_punctuation)  # Is not in a writing system                                                                             self.detect_writing_system(
-                                                                                                
 
     def split_text_by_writing_system(self, text):
         segments = []
@@ -197,9 +196,11 @@ class Tokenizer:
 
     def _tokenize(self, text):
         segments = self.split_text_by_writing_system(text)
+
         processed_segments = []
 
         for segment, seg_type in segments:
+            print(f'-{segment}-')
             if seg_type == "cjk":
                 lang = self.detect_japanese_korean_chinese(segment)
                 processed_segments.append(f"<{lang}>{segment}</{lang}>")
@@ -209,8 +210,9 @@ class Tokenizer:
                 else:
                     lang = self.detect_language(segment)
                     processed_segments.append(f"<{lang}>{segment.strip()}</{lang}>")
-            elif seg_type == "punctuation":
+            elif seg_type == "punctuation" or segment == " ":
                 processed_segments.append(f"<punctuation>{segment}</punctuation>")
+
             else:
                 words = self.split_non_cjk_in_segment(segment)
                 current_lang = None
@@ -267,7 +269,10 @@ class Tokenizer:
             grouped_segments.append(f"<{current_lang}>{''.join(current_content)}</{current_lang}>")
 
         # Clean up punctuation handling
-        return ''.join(grouped_segments).replace("<punctuation>", "").replace("</punctuation>", " ")
+        return ''.join(grouped_segments) \
+            .replace("<punctuation>", "") \
+            .replace("</punctuation>", " ") \
+            .replace("  ", " ").strip()
 
     def tokenize(self, text, group=True):
         # Split the input text into segments based on existing tags
@@ -297,7 +302,7 @@ class Tokenizer:
 
 # Main function
 if __name__ == "__main__":
-    input_text = "don't do that please"
+    input_text = "На улице сегодня холодно и пасмурно."
     token = Tokenizer()
     processed_text = token.tokenize(input_text)
     print("Input text:")

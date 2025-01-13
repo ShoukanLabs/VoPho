@@ -1,18 +1,18 @@
 {
     "sow": {
-        "an adult female hog": null,
-        "place (seeds) in or on the ground for future growth": null,
-        "introduce into an environment": null,
-        "place seeds in or on (the ground)": null
+        "an adult female hog": "saʊ",
+        "place (seeds) in or on the ground for future growth": "soʊ",
+        "introduce into an environment": "soʊ",
+        "place seeds in or on (the ground)": "soʊ"
     },
     "adversity": {
-        "a state of misfortune or affliction": null,
-        "a stroke of ill fortune; a calamitous event": null
+        "a state of misfortune or affliction": "ædˈvɜːrsɪti",
+        "a stroke of ill fortune; a calamitous event": "ædˈvɜːrsɪti"
     },
     "medieval": {
-        "relating to or belonging to the Middle Ages": null,
-        "as if belonging to the Middle Ages; old-fashioned and unenlightened": null,
-        "characteristic of the time of chivalry and knighthood in the Middle Ages": null
+        "relating to or belonging to the Middle Ages": "ˌmɛd.iˈiː.vəl",
+        "as if belonging to the Middle Ages; old-fashioned and unenlightened": "ˌmɛd.iˈiː.vəl",
+        "characteristic of the time of chivalry and knighthood in the Middle Ages": "ˌmɛd.iˈiː.vəl"
     },
     "research": {
         "systematic investigation to establish facts": null,
@@ -1649,7 +1649,7 @@
         "give an abstract (of)": null,
         "existing only in the mind; separated from embodiment": null,
         "not representing or imitating external reality or the objects of nature": null,
-        "dealing with a subject in the abstract without practical purpose or intention": null
+chat        "dealing with a subject in the abstract without practical purpose or intention": null
     },
     "artichoke": {
         "Mediterranean thistlelike plant widely cultivated for its large edible flower head": null,
