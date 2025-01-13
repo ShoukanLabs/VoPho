@@ -184,10 +184,20 @@ class Tokenizer:
                 else:
                     current_segment += char
 
+
         if current_segment:
             segments.append((current_segment, current_type))
 
-        return segments
+        outseg = []
+        prior = None
+        for seg, _ in segments:
+            if seg == " ":
+                outseg.append((seg, prior))
+            else:
+                prior = _
+                outseg.append((seg, _))
+
+        return outseg
 
     @staticmethod
     def split_non_cjk_in_segment(text):
@@ -200,7 +210,6 @@ class Tokenizer:
         processed_segments = []
 
         for segment, seg_type in segments:
-            print(f'-{segment}-')
             if seg_type == "cjk":
                 lang = self.detect_japanese_korean_chinese(segment)
                 processed_segments.append(f"<{lang}>{segment}</{lang}>")
@@ -210,7 +219,7 @@ class Tokenizer:
                 else:
                     lang = self.detect_language(segment)
                     processed_segments.append(f"<{lang}>{segment.strip()}</{lang}>")
-            elif seg_type == "punctuation" or segment == " ":
+            elif seg_type == "punctuation":
                 processed_segments.append(f"<punctuation>{segment}</punctuation>")
 
             else:
@@ -302,7 +311,7 @@ class Tokenizer:
 
 # Main function
 if __name__ == "__main__":
-    input_text = "На улице сегодня холодно и пасмурно."
+    input_text = "На улице сегодня холодно и пасмурно. after all it's pretty cool. はその名の通りのデ"
     token = Tokenizer()
     processed_text = token.tokenize(input_text)
     print("Input text:")
