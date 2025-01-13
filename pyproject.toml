@@ -31,7 +31,7 @@ dependencies = [
     "jieba==0.42.1",
     "pypinyin==0.52.0",
     "pythainlp==5.0.4",
-    "torch==2.2.0",
+    "torch>=2.0.0",
     "langdetect==1.0.9",
     "lingua-language-detector==2.0.2",
     "pywsd==1.2.5",
