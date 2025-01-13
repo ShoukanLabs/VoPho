@@ -995,6 +995,7 @@ spaces = dict([
     ("gaːn", "ga an"),
     ("ɕiːk ", "ɕi ik"),
     ("ɕijoː neɴ", "ɕoɯneɴ"),
+    ("niʔpoɴ go","nihoɴ go"),
     ("aːna", "a ana"),
 
 ])
@@ -1032,7 +1033,25 @@ def replace_repeating_a(output):
 
     return output
 
+def replace_glottal(text):
 
+    if not isinstance(text, str):
+        return text
+        
+    result = []
+    i = 0
+    while i < len(text):
+        if text[i] == 'ʔ' and i + 1 < len(text):
+
+            next_char = text[i + 1]
+            result.append(next_char)
+            result.append(next_char)  
+            i += 2
+        else:
+            result.append(text[i])
+            i += 1
+            
+    return ''.join(result)
 
 class Phonemizer:
     def __init__(self):
@@ -1162,4 +1181,4 @@ class Phonemizer:
         if text.endswith(" "):
             output += " "
 
-        return output.lstrip()
+        return replace_glottal(output.lstrip())
