@@ -1,9 +1,7 @@
 import json
 import os
-import string
 import warnings
 import re
-from langdetect import detect_langs
 from langdetect.lang_detect_exception import LangDetectException
 from lingua import LanguageDetectorBuilder
 import random
@@ -183,7 +181,6 @@ class Tokenizer:
                     current_segment = char
                 else:
                     current_segment += char
-
 
         if current_segment:
             segments.append((current_segment, current_type))
