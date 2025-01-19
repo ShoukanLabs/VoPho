@@ -2,6 +2,7 @@ import os
 import re
 
 import nltk
+from misaki import en
 from openphonemizer import OpenPhonemizer
 
 from sentence_transformers import SentenceTransformer
@@ -149,6 +150,7 @@ word_definitions = {
     }
 }
 
+
 ### ^^^ PLACEHOLDER UNTIL MANUAL DICT CREATED
 
 def get_most_similar_definition(word, query):
@@ -174,6 +176,7 @@ def get_most_similar_definition(word, query):
         return most_similar_definition, definitions[most_similar_definition]
     else:
         return query, definitions[query]
+
 
 # Function to check if a word is a homonym
 def is_homonym(word):
@@ -268,15 +271,50 @@ def replace_homonyms(text):
     return ''.join(result)
 
 
+### OPEN PHONEMISER FALLBACK
+
+FROM_ESPEAKS = sorted(
+    {'\u0303': '', 'a^ɪ': 'I', 'a^ʊ': 'W', 'd^ʒ': 'ʤ', 'e': 'A', 'e^ɪ': 'A', 'r': 'ɹ', 't^ʃ': 'ʧ', 'x': 'k', 'ç': 'k',
+     'ɐ': 'ə', 'ɔ^ɪ': 'Y', 'ə^l': 'ᵊl', 'ɚ': 'əɹ', 'ɬ': 'l', 'ʔ': 't', 'ʔn': 'tᵊn', 'ʔˌn\u0329': 'tᵊn', 'ʲ': '',
+     'ʲO': 'jO', 'ʲQ': 'jQ'}.items(), key=lambda kv: -len(kv[0]))
+
+
+class OpenPhonemiserFallback:
+    def __init__(self, backend):
+        self.backend = backend
+
+    def __call__(self, token):
+        ps = self.backend(token.text)
+
+        if not ps:
+            return None, None
+
+        for old, new in FROM_ESPEAKS:
+            ps = ps.replace(old, new)
+        ps = re.sub(r'(\S)\u0329', r'ᵊ\1', ps).replace(chr(809), '')
+
+        ps = ps.replace('o^ʊ', 'O')
+        ps = ps.replace('ɜːɹ', 'ɜɹ')
+        ps = ps.replace('ɜː', 'ɜɹ')
+        ps = ps.replace('ɪə', 'iə')
+        ps = ps.replace('ː', '')
+
+        return ps.replace('^', ''), 2
+
+
+### BASE PHONEMEISER CLASS
 class Phonemizer:
-    def __init__(self, manual_fixes=None, allow_heteronyms=True, stress=False): # temporarily allow heteronyms until we fill the dictionary
+    def __init__(self, manual_fixes=None, allow_heteronyms=True,
+                 stress=False):  # temporarily allow heteronyms until we fill the dictionary
         if manual_fixes is None:
             manual_fixes = manual_phonemizations
-        self.phonemizer = OpenPhonemizer()
+        self.backend = OpenPhonemizer()
+        self.fallback = OpenPhonemiserFallback(backend=self.backend)
+        self.phonemizer = en.G2P(trf=True, british=False, fallback=self.fallback) # no transformer, American English
 
         # Dictionary of manual phonemizations
         self.manual_phonemizations = manual_fixes
-        self.allow_heteronyms=allow_heteronyms
+        self.allow_heteronyms = allow_heteronyms
         self.stress = stress
 
         # Post-processing filters
@@ -301,7 +339,7 @@ class Phonemizer:
         # Remove the <phoneme> tags but retain the IPA within them, preserving spaces
         if not self.stress:
             text = re.sub("ˈ", "", text)
-            text = re.sub("\u02C8", "", text) # double check
+            text = re.sub("\u02C8", "", text)  # double check
 
         return self.phoneme_tag_pattern.sub(r"\1", text)
 
@@ -320,7 +358,7 @@ class Phonemizer:
             if phoneme_match:
                 # Append the phoneme tag content and preserve spaces before and after
                 if current_segment:
-                    result.append(self.phonemizer(current_segment))
+                    result.append(self.phonemizer(current_segment)[0])
                     current_segment = ""
 
                 result.append(phoneme_match.group(1))  # Add the IPA content directly
@@ -332,9 +370,9 @@ class Phonemizer:
             if char == '"':
                 if current_segment:
                     if not in_quotes:
-                        processed_segment = self.phonemizer(current_segment)
+                        processed_segment = self.phonemizer(current_segment)[0]
                     else:
-                        processed_segment = f'{self.phonemizer(current_segment)}'
+                        processed_segment = f'{self.phonemizer(current_segment)[0]}'
                     result.append(processed_segment)
                     current_segment = ""
 
@@ -348,7 +386,7 @@ class Phonemizer:
         # Process any remaining text
         if current_segment:
             if not in_quotes:
-                processed_segment = self.phonemizer(current_segment)
+                processed_segment = self.phonemizer(current_segment)[0]
             else:
                 processed_segment = f'"{self.phonemizer(current_segment)}"'
             result.append(processed_segment)
@@ -366,7 +404,7 @@ class Phonemizer:
 
 
 if __name__ == "__main__":
-    phonem = Phonemizer()
-    test_text = "i tear the paper apart, water welling up in my eyes, a tear in my eye"
+    phonem = Phonemizer(stress=True)
+    test_text = "But I am the Chosen One. But I [am](+1) the Chosen [One](-1). But I [am](+2) the Chosen [One](+2)."
     print(f"Original: {test_text}")
     print(f"Phonemized: {phonem.phonemize(test_text)}")
