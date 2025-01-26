@@ -37,7 +37,7 @@ dependencies = [
     "pywsd==1.2.5",
     "sentence-transformers",
     "scikit-learn",
-    "misaki[en]"
+    "misaki[en]>=0.5.6"
 ]
 
 [project.urls]
