@@ -19,6 +19,7 @@ classifiers = [
 requires-python = ">=3.6"
 
 dependencies = [
+    "epitran",
     "ruphon",
     "ruaccent==1.5.8",
     "cn2an==0.5.22",
