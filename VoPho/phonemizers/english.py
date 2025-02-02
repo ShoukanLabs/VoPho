@@ -388,7 +388,7 @@ class Phonemizer:
             if not in_quotes:
                 processed_segment = self.phonemizer(current_segment)[0]
             else:
-                processed_segment = f'"{self.phonemizer(current_segment)}"'
+                processed_segment = f'"{self.phonemizer(current_segment)[0]}"'
             result.append(processed_segment)
 
         phonemized_text = ''.join(result)
@@ -405,6 +405,6 @@ class Phonemizer:
 
 if __name__ == "__main__":
     phonem = Phonemizer(stress=True)
-    test_text = "But I am the Chosen One. But I [am](+1) the Chosen [One](-1). But I [am](+2) the Chosen [One](+2)."
+    test_text = "'two heads is better than one.', "
     print(f"Original: {test_text}")
     print(f"Phonemized: {phonem.phonemize(test_text)}")
