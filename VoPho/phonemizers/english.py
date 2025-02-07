@@ -5,10 +5,9 @@ import nltk
 from misaki import en
 from openphonemizer import OpenPhonemizer
 
-from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
-
 from pywsd.lesk import simple_lesk
+
+from functools import lru_cache
 
 nltk.download("wordnet", quiet=True)
 
@@ -113,8 +112,6 @@ innacurate_from_phonemizer = {
 # Combine both dictionaries
 manual_phonemizations = {**general, **proper_names, **common_mispronunciations, **innacurate_from_phonemizer}
 
-model = SentenceTransformer('all-MiniLM-L6-v2')
-
 word_definitions = {
     "lead": {
         "to guide or direct": "liːd",
@@ -161,110 +158,100 @@ def get_most_similar_definition(word, query):
     definitions = word_definitions[word]
 
     # Encode the query sentence and definitions using the model
-    if query not in definitions:
-        query_embedding = model.encode([query])
-        definition_embeddings = model.encode(list(definitions.keys()))
 
-        # Calculate cosine similarity between the query and the definitions
-        similarities = cosine_similarity(query_embedding, definition_embeddings)
-
-        # Find the index of the most similar definition
-        most_similar_index = similarities.argmax()
-
-        # Return the most similar definition
-        most_similar_definition = list(definitions.keys())[most_similar_index]
-        return most_similar_definition, definitions[most_similar_definition]
-    else:
-        return query, definitions[query]
+    return query, definitions[query]
 
 
-# Function to check if a word is a homonym
+# Global cache for filtered synsets, keyed by the lowercase word.
+filtered_sysnets = {}
+
+
+def get_filtered_synsets(word):
+    """Return a cached list of synsets for 'word' whose primary name matches the word (case-insensitive)."""
+    lw = word.lower()
+    if lw not in filtered_sysnets:
+        # Filter synsets where the primary lemma (first part of synset.name()) matches lw.
+        filtered_sysnets[lw] = [
+            synset for synset in wordnet.synsets(word)
+            if synset.name().split('.')[0].lower() == lw
+        ]
+    return filtered_sysnets[lw]
+
+
 def is_homonym(word):
-    synsets = wordnet.synsets(word)
-
-    filtered_sysnets = []
-
-    for synset in synsets:
-        if word == synset.name().split(".")[0].lower():
-            filtered_sysnets.append(synset)
-
-    return len(filtered_sysnets) > 1
+    """Return True if the word has more than one filtered synset (i.e. is a homonym)."""
+    return len(get_filtered_synsets(word)) > 1
 
 
-# Function to generate pronunciation dictionary for homonyms
+@lru_cache(maxsize=None)
+def cached_get_most_similar_definition(word, definition):
+    """
+    Cached wrapper for get_most_similar_definition.
+    This prevents repeated heavy computations for the same word/definition pair.
+    """
+    return get_most_similar_definition(word, definition)
+
+
+@lru_cache(maxsize=None)
 def generate_pronunciation_dict(word):
-    synsets = wordnet.synsets(word)
-    pronunciation_dict = {}
-
-    for synset in synsets:
-        if synset.name().split(".")[0].lower() == word:
-            definition = synset.definition()
-            # Get the lemma name for transcription
-            lemma_name = synset.lemmas()[0].name().replace("_", " ")
-            # Generate IPA pronunciation using Epitran
-            _, ipa_pronunciation = get_most_similar_definition(word, definition)
-            pronunciation_dict[definition] = ipa_pronunciation
-
-    return pronunciation_dict
+    """
+    Generate a pronunciation dictionary for the word using cached filtered synsets.
+    The keys are definitions and the values are IPA pronunciations.
+    """
+    return {
+        synset.definition(): cached_get_most_similar_definition(word, synset.definition())[1]
+        for synset in get_filtered_synsets(word)
+    }
 
 
-def replace_homonyms(text):
-    verbose = False
+@lru_cache(maxsize=1024)
+def cached_simple_lesk(context, word):
+    return simple_lesk(context, word)
 
-    # Use regex to split text while keeping the delimiters
+
+def replace_homonyms(text, verbose=False):
+    # Split text while keeping whitespace tokens.
     tokens = re.findall(r'\S+|\s+', text)
-    result = tokens.copy()
+    # Precompute lower-case version of every token to avoid repeated lower() calls.
+    lower_tokens = [token.lower() for token in tokens]
+    # Copy tokens to hold replacements.
+    result = tokens[:]
 
-    # Keep track of homonym indices to process each separately
-    homonym_indices = []
-
-    # First pass: identify homonym indices
+    # Process tokens in a single pass.
     for i, token in enumerate(tokens):
+        # Only process non-whitespace tokens.
         if not token.isspace():
-            word_lower = token.lower()
-            if is_homonym(word_lower):
-                homonym_indices.append(i)
+            current_word = lower_tokens[i]
+            if is_homonym(current_word):
+                # Create a context window (using indices from the lower_tokens list).
+                context_start = max(0, i - 3)
+                context_end = min(len(tokens), i + 5)
+                # The context is already in lower-case.
+                context = ''.join(lower_tokens[context_start:context_end])
 
-    # Process each homonym separately
-    for index in homonym_indices:
-        # Create a context window around the current word
-        context_start = max(0, index - 3)
-        context_end = min(len(tokens), index + 5)
+                # Use cached simple_lesk to disambiguate the word.
+                sense = cached_simple_lesk(context, current_word)
+                if sense:
+                    meaning = sense.definition()
+                    # Retrieve the pronunciation dictionary (cached per word).
+                    pronunciation_dict = generate_pronunciation_dict(current_word)
+                    # If the definition isn't found, fall back to the word itself.
+                    pronunciation = pronunciation_dict.get(meaning, current_word)
 
-        # Extract context
-        context_tokens = tokens[context_start:context_end]
-        context = ''.join(context_tokens).lower()
+                    if verbose:
+                        # Build a display string for context (using original tokens).
+                        context_display = ''.join(tokens[context_start:context_end])
+                        context_width = 20  # fixed width for display
+                        context_padded = (context_display.center(context_width))[:context_width]
 
-        # Focus on the specific word
-        current_word = tokens[index].lower()
+                        # Build a display string for the meaning.
+                        meaning_width = 50  # fixed width for display
+                        meaning_padded = (meaning[:meaning_width].center(meaning_width))[:meaning_width]
 
-        # Disambiguate meaning using Lesk with the specific context
-        sense = simple_lesk(context, current_word)
+                        print(f"[{context_padded}] - {meaning_padded}\r")
 
-        if sense:
-            meaning = sense.definition()
-            # Generate pronunciation dictionary for the word
-            pronunciation_dict = generate_pronunciation_dict(current_word)
-
-            # Find pronunciation for the matching meaning
-            pronunciation = pronunciation_dict.get(meaning, current_word)
-
-            # Verbose output if requested
-            if verbose:
-                # Prepare sliding context window with padding
-                context_display = ''.join(context_tokens)
-                context_width = 20  # Fixed width for consistent display
-                context_padded = (context_display.center(context_width))[:context_width]
-
-                # Prepare meaning with padding/trimming
-                meaning_width = 50  # Fixed width for consistent display
-                meaning_padded = (meaning[:meaning_width].center(meaning_width))[:meaning_width]
-
-                # Print in a formatted way
-                print(f"[{context_padded}] - {meaning_padded}\r")
-
-            # Replace the token with phoneme representation
-            result[index] = f"<phoneme>{pronunciation}</phoneme>"
+                    # Replace the token with its phoneme representation.
+                    result[i] = f"<phoneme>{pronunciation}</phoneme>"
 
     if verbose:
         print("")
@@ -304,103 +291,64 @@ class OpenPhonemiserFallback:
 
 ### BASE PHONEMEISER CLASS
 class Phonemizer:
-    def __init__(self, manual_fixes=None, allow_heteronyms=True,
-                 stress=False):  # temporarily allow heteronyms until we fill the dictionary
+    def __init__(self, manual_fixes=None, allow_heteronyms=True, stress=False):
         if manual_fixes is None:
             manual_fixes = manual_phonemizations
         self.backend = OpenPhonemizer()
         self.fallback = OpenPhonemiserFallback(backend=self.backend)
-        self.phonemizer = en.G2P(trf=True, british=False, fallback=self.fallback) # no transformer, American English
-
-        # Dictionary of manual phonemizations
+        self.phonemizer = en.G2P(trf=True, british=False, fallback=self.fallback)
         self.manual_phonemizations = manual_fixes
         self.allow_heteronyms = allow_heteronyms
         self.stress = stress
-
-        # Post-processing filters
         self.manual_filters = {
             " . . . ": "... ",
             " . ": ". "
         }
 
-        # Regex to detect text wrapped in <phoneme> tags
+        # Precompute normalized manual phonemizations and regex
+        self.manual_lower = {word.lower(): (word, ipa) for word, ipa in self.manual_phonemizations.items()}
+        sorted_words = sorted(self.manual_phonemizations.keys(), key=lambda x: (-len(x), x))
+        escaped_words = [re.escape(word) for word in sorted_words]
+        self.manual_pattern = re.compile(r'\b(' + '|'.join(escaped_words) + r')\b', flags=re.IGNORECASE)
+
+        # Precompile regex patterns
         self.phoneme_tag_pattern = re.compile(r"<phoneme>(.*?)</phoneme>")
+        self.postprocess_stress_pattern = re.compile(r'[ˈ\u02C8]')
 
     def preprocess(self, text):
         if not self.allow_heteronyms:
             text = replace_homonyms(text)
 
-        # Replace words in the text with their manual phonemizations wrapped in <phoneme> tags
-        for word, ipa in self.manual_phonemizations.items():
-            text = re.sub(rf"\b{word}\b", f"<phoneme>{ipa}</phoneme>", text, flags=re.IGNORECASE)
-        return text
+        # Replace manual words using a single regex pass
+        def replace_match(match):
+            key_lower = match.group(0).lower()
+            if key_lower in self.manual_lower:
+                return f"<phoneme>{self.manual_lower[key_lower][1]}</phoneme>"
+            return match.group(0)
+
+        return self.manual_pattern.sub(replace_match, text)
 
     def postprocess(self, text):
-        # Remove the <phoneme> tags but retain the IPA within them, preserving spaces
         if not self.stress:
-            text = re.sub("ˈ", "", text)
-            text = re.sub("\u02C8", "", text)  # double check
-
-        return self.phoneme_tag_pattern.sub(r"\1", text)
+            text = self.postprocess_stress_pattern.sub('', text)
+        return self.phoneme_tag_pattern.sub(r'\1', text)
 
     def phonemize(self, text):
-        # Preprocess the text for manual phonemizations
         preprocessed_text = self.preprocess(text)
+        segments = self.phoneme_tag_pattern.split(preprocessed_text)
 
-        result = []
-        in_quotes = False
-        current_segment = ""
+        # Process each text segment (even indices) using the G2P model
+        for i in range(0, len(segments), 2):
+            if segments[i]:
+                segments[i] = self.phonemizer(segments[i])[0]
 
-        i = 0
-        while i < len(preprocessed_text):
-            # Check for phoneme tags
-            phoneme_match = self.phoneme_tag_pattern.match(preprocessed_text, i)
-            if phoneme_match:
-                # Append the phoneme tag content and preserve spaces before and after
-                if current_segment:
-                    result.append(self.phonemizer(current_segment)[0])
-                    current_segment = ""
-
-                result.append(phoneme_match.group(1))  # Add the IPA content directly
-                i = phoneme_match.end()
-                continue
-
-            char = preprocessed_text[i]
-
-            if char == '"':
-                if current_segment:
-                    if not in_quotes:
-                        processed_segment = self.phonemizer(current_segment)[0]
-                    else:
-                        processed_segment = f'{self.phonemizer(current_segment)[0]}'
-                    result.append(processed_segment)
-                    current_segment = ""
-
-                result.append(char)
-                in_quotes = not in_quotes
-            else:
-                current_segment += char
-
-            i += 1
-
-        # Process any remaining text
-        if current_segment:
-            if not in_quotes:
-                processed_segment = self.phonemizer(current_segment)[0]
-            else:
-                processed_segment = f'"{self.phonemizer(current_segment)[0]}"'
-            result.append(processed_segment)
-
-        phonemized_text = ''.join(result)
+        phonemized_text = ''.join(segments)
 
         # Apply manual filters
-        for filter, item in self.manual_filters.items():
-            phonemized_text = phonemized_text.replace(filter, item)
+        for filter_str, replacement in self.manual_filters.items():
+            phonemized_text = phonemized_text.replace(filter_str, replacement)
 
-        # Post-process to remove phoneme tags
-        final_text = self.postprocess(phonemized_text)
-
-        return final_text
+        return self.postprocess(phonemized_text)
 
 
 if __name__ == "__main__":

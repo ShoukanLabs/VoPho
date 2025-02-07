@@ -2,6 +2,7 @@ import warnings
 from termcolor import colored
 from .phonemizers import english, japanese, mandarin, russian, thai
 from .langtokenizers.multicoded import Tokenizer, LANGUAGE_COLORS
+from VoPho.langtokenizers.tokens import Token
 import re
 
 
@@ -22,15 +23,18 @@ class Phonemizer:
         self._phonemizers = {}
         self.Tokenizer = Tokenizer()
 
-    def pretty_print(self, phonemized_dict: list):
+    def pretty_print(self, tokens: list[Token]):
         """
         Print the phonemized text with colors based on language.
 
-        :param phonemized_dict: A list of dictionaries containing phonemized text segments and their languages
+        :param tokens: A list of tokens containing phonemized text segments and their languages
         """
-        for segment in phonemized_dict:
-            text = segment['text']
-            lang = segment['lang']
+        for segment in tokens:
+            graphemes = segment.graphemes
+            phonemes = segment.phonemes
+            lang = segment.language
+
+            text = f"[{graphemes}] - [{phonemes}] - [{lang}]\n"
 
             pattern = r'<\?\?>(.*?)</\?\?>'
 
@@ -120,12 +124,12 @@ class Phonemizer:
         else:
             return text
 
-    def phonemize(self, input_text, output_dict=False):
+    def phonemize(self, input_text, output_tokens=False):
         """
         Phonemize the input text, handling multiple languages including CJK.
 
         :param input_text: The input text to phonemize
-        :param output_dict: If True, return a list of dictionaries with text and language; if False, return a single string
+        :param output_tokens: If True, return a list of dictionaries with text and language; if False, return a single string
         :return: Phonemized text as a string or list of dictionaries
         """
         separated = self.seperate_languages(input_text)
@@ -139,23 +143,28 @@ class Phonemizer:
 
 
         phonemized_result = []
+        pure_phones = []
         for item in result:
             phonemized_text = self.phonemize_for_language(item['text'], item['lang'])
-            if output_dict:
+            if output_tokens:
                 lang = item["lang"] if "??" not in phonemized_text else "??"
-                phonemized_result.append({"text": phonemized_text, "lang": lang})
+                tokenOut = Token(item['text'], phonemized_text, lang, True if phonemized_text.endswith(" ") else False)
+                phonemized_result.append(tokenOut)
+                pure_phones.append(tokenOut.phonemes)
             else:
                 phonemized_result.append(phonemized_text)
+                pure_phones.append(phonemized_result)
 
-        if not output_dict:
-            fin = ''.join(phonemized_result)
-            if "<??>" in fin:
-                warnings.warn(
-                    "Your output contains unsupported languages, "
-                    "<??> tags have been added to allow for manual filtering")
-            return fin
+        fin = ''.join(pure_phones)
+        if "<??>" in fin:
+            warnings.warn(
+                "Your output contains unsupported languages, "
+                "<??> tags have been added to allow for manual filtering")
+
+        if output_tokens:
+            return fin, phonemized_result
         else:
-            return phonemized_result
+            return fin
 
     def _process_cjk_segment(self, item):
         """
@@ -191,15 +200,15 @@ if __name__ == "__main__":
     from time import time
 
     start = time()
-    output = engine.phonemize(input_text, output_dict=True)
+    output = engine.phonemize(input_text, output_tokens=True)
     end = time()
     print(input_text)
-    engine.pretty_print(output)
+    engine.pretty_print(output[1])
     print(f"Took - First: {end - start}")
 
     start = time()
-    output = engine.phonemize(input_text, output_dict=True)
+    output = engine.phonemize(input_text, output_tokens=True)
     end = time()
     print(input_text)
-    engine.pretty_print(output)
+    engine.pretty_print(output[1])
     print(f"Took - Instantiated: {end - start}")
