@@ -1,19 +1,21 @@
 from VoPho.engine import Phonemizer
 from time import time
 
-input_text = "<phoneme>I suppose i can</phoneme>, dont take my word for it though. 音素のテストを行うことは、発音の理解を深めるために重要です。"
+input_text = "just because i read the script doesn't mean i know how to read! 音素のテストを行うことは、発音の理解を深めるために重要です。"
 
-engine = Phonemizer()
+engine = Phonemizer(stress=True)
 start = time()
-output = engine.phonemize(input_text, output_dict=True)
+output = engine.phonemize(input_text, output_tokens=True)
 end = time()
 print(input_text)
-engine.pretty_print(output)
+print(output)
+engine.pretty_print(output[1])
 print(f"Took - First: {end - start}")
 
-start = time()
-output = engine.phonemize(input_text, output_dict=True)
-end = time()
-print(input_text)
-engine.pretty_print(output)
-print(f"Took - Instantiated: {end - start}")
+for i in range(5):
+    start = time()
+    output = engine.phonemize(input_text, output_tokens=True)
+    end = time()
+    print(input_text)
+    engine.pretty_print(output[1])
+    print(f"Took - Instantiated: {end - start}")
