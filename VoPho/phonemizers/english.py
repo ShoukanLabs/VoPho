@@ -291,12 +291,16 @@ class OpenPhonemiserFallback:
 
 ### BASE PHONEMEISER CLASS
 class Phonemizer:
-    def __init__(self, manual_fixes=None, allow_heteronyms=True, stress=False):
+    def __init__(self, manual_fixes=None, allow_heteronyms=True, stress=False, legacy=False):
+        self.legacy = legacy
         if manual_fixes is None:
             manual_fixes = manual_phonemizations
-        self.backend = OpenPhonemizer()
-        self.fallback = OpenPhonemiserFallback(backend=self.backend)
-        self.phonemizer = en.G2P(trf=True, british=False, fallback=self.fallback)
+        if not legacy:
+            self.backend = OpenPhonemizer()
+            self.fallback = OpenPhonemiserFallback(backend=self.backend)
+            self.phonemizer = en.G2P(trf=True, british=False, fallback=self.fallback)
+        else:
+            self.phonemizer = OpenPhonemizer()
         self.manual_phonemizations = manual_fixes
         self.allow_heteronyms = allow_heteronyms
         self.stress = stress
@@ -338,9 +342,14 @@ class Phonemizer:
         segments = self.phoneme_tag_pattern.split(preprocessed_text)
 
         # Process each text segment (even indices) using the G2P model
-        for i in range(0, len(segments), 2):
-            if segments[i]:
-                segments[i] = self.phonemizer(segments[i])[0]
+        if not self.legacy:
+            for i in range(0, len(segments), 2):
+                if segments[i]:
+                    segments[i] = self.phonemizer(segments[i])[0]
+        else:
+            for i in range(0, len(segments), 2):
+                if segments[i]:
+                    segments[i] = self.phonemizer(segments[i])
 
         phonemized_text = ''.join(segments)
 
@@ -352,7 +361,7 @@ class Phonemizer:
 
 
 if __name__ == "__main__":
-    phonem = Phonemizer(stress=True)
+    phonem = Phonemizer(stress=True, legacy=True)
     test_text = "'two heads is better than one.', "
     print(f"Original: {test_text}")
     print(f"Phonemized: {phonem.phonemize(test_text)}")
