@@ -11,17 +11,22 @@ class Phonemizer:
     A class for phonemizing text in multiple languages,
     """
 
-    def __init__(self, working_path=None, stress=False):
+    def __init__(self, working_path=None, stress=False, legacy=False, manual_fixes=None):
         """
         Initialize the Phonemizer.
 
         :param working_path: Optional path for working directory
         :param stress: Optional toggle for stress, for phonemisers that support it
         """
+        if manual_fixes is None:
+            self.manual_fixes = {}
+        else:
+            self.manual_fixes = manual_fixes
         self.working_path = working_path
         self.stress = stress
         self._phonemizers = {}
         self.Tokenizer = Tokenizer()
+        self.legacy = legacy
 
     def pretty_print(self, tokens: list[Token]):
         """
@@ -61,13 +66,13 @@ class Phonemizer:
         """
         if lang not in self._phonemizers:
             if lang == 'en':
-                self._phonemizers[lang] = english.Phonemizer(stress=self.stress)
+                self._phonemizers[lang] = english.Phonemizer(stress=self.stress, legacy=self.legacy)
             elif lang == 'ja':
                 self._phonemizers[lang] = japanese.Phonemizer()
             elif lang == 'zh':
                 self._phonemizers[lang] = mandarin.Phonemizer()
             elif lang == 'cy': # cyrillic treated as russian
-                self._phonemizers[lang] = russian.Phonemizer(working_path=self.working_path)
+                self._phonemizers[lang] = russian.Phonemizer(working_path=self.working_path, stress=self.stress)
             elif lang == 'th':
                 self._phonemizers[lang] = thai.Phonemizer()
         return self._phonemizers.get(lang)
